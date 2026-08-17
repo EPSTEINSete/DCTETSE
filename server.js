@@ -1,139 +1,110 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-});
+const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
+let users = {};        // socket.id -> nome do usuário
+let voiceRooms = {};   // channelId -> Set de socket.ids na call
 let channels = [
   { id: 'geral', name: 'geral', type: 'text' },
-  { id: 'voz-geral', name: 'Geral', type: 'voice' }
+  { id: 'geral-voz', name: 'Geral', type: 'voice' }
 ];
 
-const users = {}; 
-const voiceChannels = {}; 
-
-function getVoiceMembership() {
+function getVoiceMembershipMap() {
   const map = {};
-  for (const [chId, socketIds] of Object.entries(voiceChannels)) {
-    map[chId] = Array.from(socketIds)
-      .map(id => users[id])
-      .filter(Boolean);
+  for (const [channelId, socketIds] of Object.entries(voiceRooms)) {
+    map[channelId] = Array.from(socketIds).map(id => ({
+      id: id,
+      name: users[id] || 'Anônimo'
+    }));
   }
   return map;
 }
 
-function broadcastVoiceMembership() {
-  io.emit('voice-membership', getVoiceMembership());
-}
-
 io.on('connection', (socket) => {
+  console.log('Usuário conectado:', socket.id);
+
   socket.on('join', (name) => {
-    users[socket.id] = { id: socket.id, name };
-
-    const otherUsers = Object.values(users).filter(u => u.id !== socket.id);
-    socket.emit('existing-users', otherUsers);
-    socket.broadcast.emit('user-joined', { id: socket.id, name });
-
+    users[socket.id] = name;
     socket.emit('channels', channels);
-    socket.join('text-geral');
-    broadcastVoiceMembership();
+    socket.broadcast.emit('user-joined', { id: socket.id, name });
+    
+    const existingUsers = Object.entries(users)
+      .filter(([id]) => id !== socket.id)
+      .map(([id, uname]) => ({ id, name: uname }));
+    socket.emit('existing-users', existingUsers);
+    
+    io.emit('voice-membership', getVoiceMembershipMap());
   });
 
   socket.on('create-channel', ({ name, type }) => {
-    const id = (type === 'voice' ? 'voz-' : 'text-') + Date.now();
-    channels.push({ id, name, type });
-    io.emit('channels', channels);
-  });
-
-  socket.on('switch-channel', (channelId) => {
-    channels.forEach(c => {
-      if (c.type === 'text') socket.leave('text-' + c.id);
-    });
-    socket.join('text-' + channelId);
-  });
-
-  socket.on('chat-message', ({ channelId, text }) => {
-    const user = users[socket.id];
-    if (!user) return;
-    socket.to('text-' + channelId).emit('chat-message', {
-      name: user.name,
-      text,
-      channelId
-    });
+    const id = name.toLowerCase().replace(/\s+/g, '-');
+    if (!channels.find(c => c.id === id)) {
+      channels.push({ id, name, type });
+      io.emit('channels', channels);
+    }
   });
 
   socket.on('join-voice-channel', (channelId) => {
-    leaveCurrentVoiceChannel(socket);
-
-    if (!voiceChannels[channelId]) {
-      voiceChannels[channelId] = new Set();
+    // Remove de qualquer outro canal de voz anterior
+    for (const chId in voiceRooms) {
+      if (voiceRooms[chId].has(socket.id)) {
+        voiceRooms[chId].delete(socket.id);
+        socket.to(chId).emit('voice-user-left', { id: socket.id });
+      }
     }
 
-    const currentPeers = Array.from(voiceChannels[channelId])
-      .map(id => users[id])
-      .filter(Boolean);
+    if (!voiceRooms[channelId]) {
+      voiceRooms[channelId] = new Set();
+    }
+    voiceRooms[channelId].add(socket.id);
 
-    voiceChannels[channelId].add(socket.id);
-    socket.voiceChannelId = channelId;
+    const peersInChannel = Array.from(voiceRooms[channelId])
+      .filter(id => id !== socket.id)
+      .map(id => ({ id }));
+    
+    socket.emit('voice-peers', { channelId, peers: peersInChannel });
+    socket.to(channelId).emit('voice-user-joined', { id: socket.id, channelId });
 
-    socket.emit('voice-peers', {
-      channelId,
-      peers: currentPeers
-    });
-
-    socket.to('vroom-' + channelId).emit('voice-user-joined', {
-      id: socket.id,
-      channelId
-    });
-
-    socket.join('vroom-' + channelId);
-    broadcastVoiceMembership();
+    io.emit('voice-membership', getVoiceMembershipMap());
   });
 
   socket.on('leave-voice-channel', () => {
-    leaveCurrentVoiceChannel(socket);
+    for (const chId in voiceRooms) {
+      if (voiceRooms[chId].has(socket.id)) {
+        voiceRooms[chId].delete(socket.id);
+        socket.to(chId).emit('voice-user-left', { id: socket.id });
+      }
+    }
+    io.emit('voice-membership', getVoiceMembershipMap());
   });
 
   socket.on('signal', ({ to, data }) => {
-    io.to(to).emit('signal', {
-      from: socket.id,
-      data
-    });
+    io.to(to).emit('signal', { from: socket.id, data });
+  });
+
+  socket.on('chat-message', ({ channelId, text }) => {
+    socket.broadcast.emit('chat-message', { channelId, name: users[socket.id] || 'Anônimo', text });
   });
 
   socket.on('disconnect', () => {
-    leaveCurrentVoiceChannel(socket);
-    socket.broadcast.emit('user-left', { id: socket.id });
+    console.log('Usuário desconectado:', socket.id);
+    for (const chId in voiceRooms) {
+      if (voiceRooms[chId].has(socket.id)) {
+        voiceRooms[chId].delete(socket.id);
+        socket.to(chId).emit('voice-user-left', { id: socket.id });
+      }
+    }
     delete users[socket.id];
+    io.emit('user-left', { id: socket.id });
+    io.emit('voice-membership', getVoiceMembershipMap());
   });
 });
-
-function leaveCurrentVoiceChannel(socket) {
-  const chId = socket.voiceChannelId;
-  if (!chId) return;
-
-  if (voiceChannels[chId]) {
-    voiceChannels[chId].delete(socket.id);
-    if (voiceChannels[chId].size === 0) {
-      delete voiceChannels[chId];
-    }
-  }
-
-  socket.leave('vroom-' + chId);
-  socket.to('vroom-' + chId).emit('voice-user-left', { id: socket.id });
-  delete socket.voiceChannelId;
-  broadcastVoiceMembership();
-}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
