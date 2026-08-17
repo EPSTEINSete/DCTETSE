@@ -1,0 +1,271 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'gg sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: #313338;
+  color: #dbdee1;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Estilo Discord */
+.sidebar {
+  width: 240px;
+  background-color: #2b2d31;
+  display: flex;
+  flex-direction: column;
+}
+
+.server-header {
+  padding: 16px;
+  border-bottom: 1px solid #1f2023;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.server-header h3 {
+  font-size: 15px;
+  color: #f2f3f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.channels-list {
+  flex: 1;
+  padding: 10px 8px;
+}
+
+.channel-category {
+  font-size: 12px;
+  font-weight: bold;
+  color: #949ba4;
+  margin-bottom: 6px;
+  padding-left: 8px;
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #949ba4;
+}
+
+.channel:hover, .channel.active-channel {
+  background-color: #35373c;
+  color: #f2f3f5;
+}
+
+.channel-users-list {
+  padding-left: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.channel-user-item {
+  font-size: 13px;
+  color: #949ba4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Card de Voz Conectada */
+.connection-card {
+  background-color: #232428;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1f2023;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #23a55a;
+}
+
+.status-title {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-subtitle {
+  font-size: 10px;
+  color: #949ba4;
+}
+
+.disconnect-btn {
+  color: #f23f43;
+}
+
+.disconnect-btn:hover {
+  background-color: rgba(242, 63, 67, 0.1);
+}
+
+/* User Footer */
+.user-footer {
+  background-color: #232428;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-small {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-small img, .avatar-large img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background-color: #23a55a;
+  border-radius: 50%;
+  border: 2px solid #232428;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  font-size: 13px;
+  font-weight: bold;
+  color: #f2f3f5;
+}
+
+.tag {
+  font-size: 10px;
+  color: #949ba4;
+}
+
+.user-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: #b5bac1;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-icon:hover {
+  background-color: #35373c;
+  color: #f2f3f5;
+}
+
+.btn-icon.active {
+  color: #f23f43;
+}
+
+/* Área Principal */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #313338;
+}
+
+.top-bar {
+  padding: 16px;
+  border-bottom: 1px solid #1f2023;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  color: #f2f3f5;
+}
+
+.call-grid {
+  flex: 1;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-content: center;
+  justify-items: center;
+}
+
+.placeholder-message {
+  text-align: center;
+  color: #949ba4;
+  grid-column: 1 / -1;
+}
+
+.placeholder-message i {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.user-card {
+  background-color: #111214;
+  width: 100%;
+  max-width: 240px;
+  height: 180px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  border: 2px solid transparent;
+  transition: border-color 0.1s;
+}
+
+.user-card.speaking {
+  border-color: #23a55a;
+}
+
+.avatar-large {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 12px;
+}
+
+.user-card-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #f2f3f5;
+}
+
+.hidden {
+  display: none !important;
+}

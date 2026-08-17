@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Web Voice</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Barra Lateral do Servidor -->
+    <aside class="sidebar">
+      <div class="server-header">
+        <h3>NASTY 22 <i class="fa-solid fa-chevron-down"></i></h3>
+      </div>
+      
+      <div class="channels-list">
+        <div class="channel-category">CANAIS DE VOZ</div>
+        <div id="voice-channel-btn" class="channel item-voice">
+          <i class="fa-solid fa-volume-high"></i>
+          <span>Geral</span>
+        </div>
+        <div id="channel-users" class="channel-users-list"></div>
+      </div>
+
+      <!-- Control Card de Conexão -->
+      <div id="connection-card" class="connection-card hidden">
+        <div class="status-indicator">
+          <i class="fa-solid fa-wifi"></i>
+          <div>
+            <div class="status-title">Voz conectada</div>
+            <div class="status-subtitle">Geral / NASTY 22</div>
+          </div>
+        </div>
+        <button id="btn-disconnect" class="btn-icon disconnect-btn" title="Desconectar"><i class="fa-solid fa-phone-slash"></i></button>
+      </div>
+
+      <!-- Perfil Inferior -->
+      <div class="user-footer">
+        <div class="user-info">
+          <div class="avatar-small">
+            <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Avatar">
+            <span class="status-dot"></span>
+          </div>
+          <div class="user-details">
+            <span class="username">Você</span>
+            <span class="tag">#0001</span>
+          </div>
+        </div>
+        <div class="user-controls">
+          <button id="btn-mute" class="btn-icon"><i class="fa-solid fa-microphone"></i></button>
+          <button id="btn-deafen" class="btn-icon"><i class="fa-solid fa-headphones"></i></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Área Principal da Call -->
+    <main class="main-content">
+      <div class="top-bar">
+        <i class="fa-solid fa-hashtag"></i>
+        <span>Geral</span>
+      </div>
+
+      <div id="call-grid" class="call-grid">
+        <div class="placeholder-message">
+          <i class="fa-solid fa-headset"></i>
+          <h2>Canal de Voz Vazio</h2>
+          <p>Clique em <strong># Geral</strong> na barra lateral para entrar na call.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
