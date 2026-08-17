@@ -161,7 +161,7 @@ function renderChannels() {
           memItem.style.color = '#949ba4';
 
           const avatarMini = document.createElement('div');
-          avatarMini.textContent = m.name.charAt(0).toUpperCase();
+          avatarMini.textContent = (m.name || 'U').charAt(0).toUpperCase();
           avatarMini.style.width = '20px';
           avatarMini.style.height = '20px';
           avatarMini.style.borderRadius = '50%';
@@ -203,6 +203,10 @@ function toggleVoiceChannel(id) {
 
 async function joinVoiceChannel(id) {
   if (currentVoiceChannel) leaveVoiceChannel(false);
+
+  if (!myName) {
+    myName = nameInput.value.trim() || 'Usuário';
+  }
 
   try {
     localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
