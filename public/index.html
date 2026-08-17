@@ -12,21 +12,21 @@
     <div class="login-card">
       <h1>EPSTEIN 22</h1>
       <p>Boas-vindas de volta!</p>
-      <input type="text" id="name-input" placeholder="Digite seu nome de usuário" autofocus maxlength="20">
+      <input type="text" id="name-input" placeholder="Digite seu apelido..." autofocus maxlength="20">
       <button id="join-btn">Entrar</button>
     </div>
   </div>
 
-  <!-- App Discord Interface -->
+  <!-- App Interface -->
   <div id="app-screen" style="display: none;">
-    <!-- Trilho Lateral do Servidor -->
+    <!-- Barra da Esquerda (Ícone do Servidor) -->
     <div class="guilds-rail">
       <div class="guild-icon" title="EPSTEIN 22">EP</div>
     </div>
 
-    <!-- Sidebar de Canais -->
+    <!-- Sidebar do Servidor -->
     <div class="sidebar">
-      <div>
+      <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
         <div class="server-header">
           <span>EPSTEIN 22</span>
           <span>∨</span>
@@ -47,14 +47,13 @@
         </div>
       </div>
 
-      <!-- Rodapé do Usuário e Conexão de Voz -->
+      <!-- Rodapé (Card de Voz e Perfil) -->
       <div>
         <div id="voice-status-panel">
           <div class="voice-info">
-            <span class="voice-icon">📡</span>
             <div class="voice-details">
-              <div class="status-text">Voz conectada</div>
-              <div class="channel-connected" id="connected-channel-name">/ EPSTEIN 22</div>
+              <span class="status-text">📡 Voz conectada</span>
+              <span class="channel-connected" id="connected-channel-name">/ EPSTEIN 22</span>
             </div>
             <button class="hangup-btn" id="disconnect-voice-btn" title="Desconectar">✕</button>
           </div>
@@ -67,13 +66,12 @@
           </div>
           <div class="control-buttons">
             <button class="icon-btn" id="screen-btn" disabled title="Compartilhar Tela">🖥️</button>
-            <button class="icon-btn" title="Configurações">⚙️</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Area Central do Chat -->
+    <!-- Chat Central -->
     <div class="chat-area">
       <div class="chat-header" id="channel-title"># geral</div>
       <div id="screen-grid"></div>
@@ -85,9 +83,9 @@
       </form>
     </div>
 
-    <!-- Sidebar de Membros à Direita -->
+    <!-- Sidebar de Membros -->
     <div class="members-sidebar">
-      <div class="member-group-title">Online — <span id="online-count">1</span></div>
+      <div class="member-group-title">ONLINE</div>
       <ul id="users"></ul>
     </div>
   </div>
