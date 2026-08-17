@@ -15,12 +15,16 @@ const remoteUsers = {};
 let audioCtx = null;
 
 function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
   return audioCtx;
 }
 
-// UI Elements
+// Elementos da UI
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
 const nameInput = document.getElementById('name-input');
@@ -46,7 +50,8 @@ const myAvatar = document.getElementById('my-avatar');
 const rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
   ]
 };
 
@@ -63,7 +68,13 @@ function doJoin() {
   socket.emit('join', name);
   loginScreen.style.display = 'none';
   appScreen.style.display = 'flex';
+  getAudioCtx();
 }
+
+// Desbloquear áudio ao clicar na página
+document.body.addEventListener('click', () => {
+  getAudioCtx();
+}, { once: true });
 
 // Mutar Microfone
 muteBtn.onclick = () => {
@@ -83,7 +94,7 @@ muteBtn.onclick = () => {
   }
 };
 
-// Desconectar da Call pelo Botão Vermelho/Telefone
+// Desconectar Voz
 disconnectVoiceBtn.onclick = () => {
   leaveVoiceChannel(true);
 };
@@ -160,7 +171,7 @@ async function joinVoiceChannel(id) {
   try {
     localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch (err) {
-    alert('Erro ao acessar microfone: ' + err.message);
+    alert('Acesso ao microfone foi recusado ou não foi encontrado.');
     return;
   }
 
@@ -168,7 +179,6 @@ async function joinVoiceChannel(id) {
   currentVoiceChannel = id;
   socket.emit('join-voice-channel', id);
   
-  // Atualiza a UI para canal conectado
   screenBtn.disabled = false;
   voiceStatusPanel.style.display = 'block';
   connectedChannelName.textContent = '/ ' + (channels[id] ? channels[id].name : 'Voz');
@@ -182,6 +192,7 @@ function leaveVoiceChannel(clearChannel) {
   Object.keys(peers).forEach(id => {
     if (peers[id]) peers[id].close();
     delete peers[id];
+    removeAudioElement(id);
     removeScreenTile(id);
   });
 
@@ -206,20 +217,21 @@ socket.on('voice-membership', (map) => {
 
 socket.on('voice-peers', ({ channelId, peers: peerList }) => {
   if (channelId !== currentVoiceChannel) return;
-  peerList.forEach(p => createPeerConnection(p.id));
+  peerList.forEach(p => createPeerConnection(p.id, true));
 });
 
 socket.on('voice-user-joined', ({ id, channelId }) => {
   if (channelId !== currentVoiceChannel) return;
-  createPeerConnection(id);
+  createPeerConnection(id, false);
 });
 
 socket.on('voice-user-left', ({ id }) => {
   if (peers[id]) { peers[id].close(); delete peers[id]; }
+  removeAudioElement(id);
   removeScreenTile(id);
 });
 
-// Usuários
+// Usuários da Sala
 function renderUsers() {
   usersList.innerHTML = '';
   const me = document.createElement('li');
@@ -248,6 +260,7 @@ socket.on('user-joined', ({ id, name }) => {
 socket.on('user-left', ({ id }) => {
   delete remoteUsers[id];
   if (peers[id]) { peers[id].close(); delete peers[id]; }
+  removeAudioElement(id);
   removeScreenTile(id);
   renderUsers();
 });
@@ -278,62 +291,85 @@ function addMessage(name, text) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// WebRTC
-function createPeerConnection(peerId) {
+// Conexão WebRTC com tratamento de áudio
+function createPeerConnection(peerId, isInitiator) {
   if (peers[peerId]) return peers[peerId];
   const pc = new RTCPeerConnection(rtcConfig);
   peers[peerId] = pc;
 
   pc.onicecandidate = (e) => {
-    if (e.candidate) socket.emit('signal', { to: peerId, data: { candidate: e.candidate } });
+    if (e.candidate) {
+      socket.emit('signal', { to: peerId, data: { candidate: e.candidate } });
+    }
   };
 
   pc.ontrack = (e) => {
     const stream = e.streams[0];
     if (e.track.kind === 'audio') {
-      const ctx = getAudioCtx();
-      const source = ctx.createMediaStreamSource(stream);
-      source.connect(ctx.destination);
+      attachAudioTrack(peerId, stream);
     } else if (e.track.kind === 'video') {
       addScreenTile(peerId, stream, false);
     }
   };
 
-  pc.onnegotiationneeded = async () => {
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit('signal', { to: peerId, data: { sdp: pc.localDescription } });
-    } catch (err) {}
-  };
+  if (localAudioStream) {
+    localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
+  }
+  if (localScreenStream) {
+    localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
+  }
 
-  if (localAudioStream) localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
-  if (localScreenStream) localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
+  if (isInitiator) {
+    pc.onnegotiationneeded = async () => {
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('signal', { to: peerId, data: { sdp: pc.localDescription } });
+      } catch (err) {}
+    };
+  }
 
   return pc;
+}
+
+function attachAudioTrack(peerId, stream) {
+  let audio = document.getElementById('audio-' + peerId);
+  if (!audio) {
+    audio = document.createElement('audio');
+    audio.id = 'audio-' + peerId;
+    audio.autoplay = true;
+    document.body.appendChild(audio);
+  }
+  audio.srcObject = stream;
+  audio.play().catch(() => {});
+}
+
+function removeAudioElement(peerId) {
+  const audio = document.getElementById('audio-' + peerId);
+  if (audio) audio.remove();
 }
 
 socket.on('signal', async ({ from, data }) => {
   if (!currentVoiceChannel) return;
   let pc = peers[from];
-  if (!pc) pc = createPeerConnection(from);
+  if (!pc) pc = createPeerConnection(from, false);
 
   if (data.sdp) {
     const desc = new RTCSessionDescription(data.sdp);
+    await pc.setRemoteDescription(desc);
     if (desc.type === 'offer') {
-      await pc.setRemoteDescription(desc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('signal', { to: from, data: { sdp: pc.localDescription } });
-    } else {
-      await pc.setRemoteDescription(desc);
     }
   } else if (data.candidate) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (err) {}
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    } catch (err) {}
   }
 });
 
-// Compartilhamento
+// Compartilhamento de Tela
 screenBtn.onclick = async () => {
   if (!currentVoiceChannel) return;
 
@@ -374,10 +410,17 @@ function stopScreenShare() {
 function addScreenTile(id, stream, isLocal) {
   let tile = document.getElementById('screen-' + id);
   if (!tile) {
-    tile = document.createElement('div'); tile.className = 'screen-tile'; tile.id = 'screen-' + id;
-    const video = document.createElement('video'); video.autoplay = true; video.playsInline = true; if (isLocal) video.muted = true;
+    tile = document.createElement('div');
+    tile.className = 'screen-tile';
+    tile.id = 'screen-' + id;
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.playsInline = true;
+    if (isLocal) video.muted = true;
     tile.appendChild(video);
-    const label = document.createElement('div'); label.className = 'screen-label'; label.textContent = isLocal ? 'Você' : (remoteUsers[id] || 'Alguém');
+    const label = document.createElement('div');
+    label.className = 'screen-label';
+    label.textContent = isLocal ? 'Você' : (remoteUsers[id] || 'Alguém');
     tile.appendChild(label);
     screenGrid.appendChild(tile);
   }
