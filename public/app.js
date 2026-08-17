@@ -36,8 +36,8 @@ const voiceChannelListEl = document.getElementById('voice-channel-list');
 const addTextChannelBtn = document.getElementById('add-text-channel-btn');
 const addVoiceChannelBtn = document.getElementById('add-voice-channel-btn');
 const channelTitle = document.getElementById('channel-title');
+const myNameDisplay = document.getElementById('my-name-display');
 
-// STUN servers públicos configurados para atravessar conexões HTTPS
 const rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -46,7 +46,7 @@ const rtcConfig = {
   ]
 };
 
-// ---------- Entrar no app ----------
+// Login
 joinBtn.onclick = doJoin;
 nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
 
@@ -54,20 +54,21 @@ function doJoin() {
   const name = nameInput.value.trim();
   if (!name) return;
   myName = name;
+  if (myNameDisplay) myNameDisplay.textContent = name;
   socket.emit('join', name);
   loginScreen.style.display = 'none';
-  appScreen.style.display = 'block';
+  appScreen.style.display = 'flex';
   renderUsers();
 }
 
-// ---------- Canais (texto e voz) ----------
+// Criar canais
 addTextChannelBtn.onclick = () => {
-  const name = prompt('Nome do novo canal de texto:');
+  const name = prompt('Nome do canal de texto:');
   if (name && name.trim()) socket.emit('create-channel', { name: name.trim(), type: 'text' });
 };
 
 addVoiceChannelBtn.onclick = () => {
-  const name = prompt('Nome do novo canal de voz:');
+  const name = prompt('Nome do canal de voz:');
   if (name && name.trim()) socket.emit('create-channel', { name: name.trim(), type: 'voice' });
 };
 
@@ -98,7 +99,7 @@ socket.on('channel-history', ({ channelId, messages }) => {
 function switchTextChannel(id) {
   if (!channels[id] || channels[id].type !== 'text') id = 'geral';
   currentTextChannel = id;
-  channelTitle.textContent = 'EPSTEIN — #' + channels[id].name;
+  channelTitle.textContent = 'EPSTEIN 22 — #' + channels[id].name;
   messagesDiv.innerHTML = '';
   socket.emit('switch-channel', id);
   renderChannels();
@@ -115,7 +116,7 @@ function renderChannels() {
 
       const nameSpan = document.createElement('span');
       nameSpan.className = 'channel-name';
-      nameSpan.textContent = c.name;
+      nameSpan.textContent = '# ' + c.name;
       nameSpan.onclick = () => switchTextChannel(id);
       li.appendChild(nameSpan);
 
@@ -123,10 +124,9 @@ function renderChannels() {
         const del = document.createElement('span');
         del.className = 'delete-channel';
         del.textContent = '✕';
-        del.title = 'Apagar canal';
         del.onclick = (e) => {
           e.stopPropagation();
-          if (confirm(`Apagar o canal "#${c.name}"?`)) socket.emit('delete-channel', id);
+          if (confirm(`Apagar canal "#${c.name}"?`)) socket.emit('delete-channel', id);
         };
         li.appendChild(del);
       }
@@ -141,7 +141,7 @@ function renderChannels() {
 
       const nameSpan = document.createElement('span');
       nameSpan.className = 'channel-name';
-      nameSpan.textContent = '🔊 ' + c.name + (id === currentVoiceChannel ? ' (conectado)' : '');
+      nameSpan.textContent = '🔊 ' + c.name + (id === currentVoiceChannel ? ' (Conectado)' : '');
       nameSpan.onclick = () => toggleVoiceChannel(id);
       row.appendChild(nameSpan);
 
@@ -149,10 +149,9 @@ function renderChannels() {
         const del = document.createElement('span');
         del.className = 'delete-channel';
         del.textContent = '✕';
-        del.title = 'Apagar canal';
         del.onclick = (e) => {
           e.stopPropagation();
-          if (confirm(`Apagar o canal de voz "${c.name}"?`)) socket.emit('delete-channel', id);
+          if (confirm(`Apagar canal de voz "${c.name}"?`)) socket.emit('delete-channel', id);
         };
         row.appendChild(del);
       }
@@ -163,7 +162,7 @@ function renderChannels() {
       if (members.length) {
         const memDiv = document.createElement('div');
         memDiv.className = 'voice-members';
-        memDiv.textContent = members.map(m => m.name).join(', ');
+        memDiv.textContent = members.map(m => '• ' + m.name).join(' ');
         li.appendChild(memDiv);
       }
 
@@ -172,7 +171,7 @@ function renderChannels() {
   });
 }
 
-// ---------- Entrar/sair de canal de voz ----------
+// Gestão de áudio / Voz
 function toggleVoiceChannel(id) {
   if (currentVoiceChannel === id) {
     leaveVoiceChannel(true);
@@ -187,12 +186,11 @@ async function joinVoiceChannel(id) {
   try {
     localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch (err) {
-    alert('Erro ao acessar o microfone: ' + err.message);
+    alert('Permissão de microfone negada ou erro de mídia: ' + err.message);
     return;
   }
 
   getAudioCtx();
-
   currentVoiceChannel = id;
   socket.emit('join-voice-channel', id);
   screenBtn.disabled = false;
@@ -248,7 +246,7 @@ socket.on('voice-user-left', ({ id }) => {
   renderUsers();
 });
 
-// ---------- Lista geral de usuários online ----------
+// Usuários
 function renderUsers() {
   usersList.innerHTML = '';
   const me = document.createElement('li');
@@ -274,7 +272,6 @@ function renderUsers() {
       vol.oninput = () => {
         const v = parseInt(vol.value, 10);
         peerVolumes[id] = v;
-        vol.title = `Volume de ${name}: ${v}%`;
         if (peerGainNodes[id]) peerGainNodes[id].gain.value = v / 100;
       };
       li.appendChild(vol);
@@ -292,7 +289,7 @@ socket.on('existing-users', (list) => {
 socket.on('user-joined', ({ id, name }) => {
   remoteUsers[id] = name;
   renderUsers();
-  addSystemMessage(`${name} entrou.`);
+  addSystemMessage(`${name} entrou no servidor.`);
 });
 
 socket.on('user-left', ({ id, name }) => {
@@ -304,7 +301,7 @@ socket.on('user-left', ({ id, name }) => {
   addSystemMessage(`${name} saiu.`);
 });
 
-// ---------- Chat de texto ----------
+// Chat
 socket.on('chat-message', (msg) => {
   if (msg.channelId !== currentTextChannel) return;
   addMessage(msg.name, msg.text);
@@ -338,7 +335,7 @@ function addSystemMessage(text) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// ---------- WebRTC ----------
+// WebRTC
 function createPeerConnection(peerId) {
   if (peers[peerId]) return peers[peerId];
   const pc = new RTCPeerConnection(rtcConfig);
@@ -402,10 +399,10 @@ socket.on('signal', async ({ from, data }) => {
   }
 });
 
-// ---------- Compartilhar tela ----------
+// Tela
 screenBtn.onclick = async () => {
   if (!currentVoiceChannel) {
-    alert('Entre em um canal de voz para compartilhar sua tela.');
+    alert('Entre em um canal de voz primeiro!');
     return;
   }
   if (!sharingScreen) {
@@ -416,11 +413,9 @@ screenBtn.onclick = async () => {
       });
       addScreenTile('me', localScreenStream, true);
       sharingScreen = true;
-      screenBtn.textContent = '🛑 Parar compartilhamento';
+      screenBtn.textContent = '🛑 Parar transmissão';
       localScreenStream.getVideoTracks()[0].onended = stopScreenShare;
-    } catch (err) {
-      // Cancelado pelo usuário
-    }
+    } catch (err) {}
   } else {
     stopScreenShare();
   }
@@ -449,24 +444,12 @@ function addScreenTile(id, stream, isLocal) {
     video.autoplay = true;
     video.playsInline = true;
     if (isLocal) video.muted = true;
-    video.onclick = () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        video.requestFullscreen().catch(() => {});
-      }
-    };
     tile.appendChild(video);
 
     const label = document.createElement('div');
     label.className = 'screen-label';
     label.textContent = isLocal ? 'Você' : (remoteUsers[id] || 'Alguém');
     tile.appendChild(label);
-
-    const hint = document.createElement('div');
-    hint.className = 'screen-hint';
-    hint.textContent = 'clique p/ tela cheia';
-    tile.appendChild(hint);
 
     screenGrid.appendChild(tile);
   }
