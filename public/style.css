@@ -3,29 +3,29 @@
   --bg-secondary: #2b2d31;
   --bg-secondary-alt: #1e1f22;
   --bg-tertiary: #111214;
-  --bg-modifier-hover: rgba(255, 255, 255, 0.07);
-  --bg-modifier-active: rgba(255, 255, 255, 0.1);
   --text-normal: #dbdee1;
   --text-muted: #949ba4;
   --text-positive: #23a55a;
   --text-danger: #f23f43;
   --accent: #5865f2;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
   user-select: none;
 }
 
 body, html {
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   background-color: var(--bg-tertiary);
   color: var(--text-normal);
   overflow: hidden;
+  font-size: 14px;
 }
 
 /* Screen Switcher */
@@ -41,29 +41,28 @@ body, html {
   background: var(--bg-secondary);
   padding: 32px;
   border-radius: 8px;
-  width: 100%;
-  max-width: 400px;
+  width: 380px;
   text-align: center;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 .login-card h1 {
   color: #fff;
   margin-bottom: 8px;
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .login-card p {
   color: var(--text-muted);
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .login-card input {
   width: 100%;
   padding: 10px;
   background: var(--bg-secondary-alt);
-  border: 1px solid rgba(0,0,0,0.3);
+  border: 1px solid rgba(0,0,0,0.4);
   border-radius: 4px;
   color: #fff;
   margin-bottom: 16px;
@@ -72,7 +71,7 @@ body, html {
 
 .login-card button {
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   background: var(--accent);
   border: none;
   border-radius: 4px;
@@ -81,18 +80,14 @@ body, html {
   cursor: pointer;
 }
 
-.login-card button:hover {
-  background: #4752c4;
-}
-
-/* App Container Layout */
+/* Main App Layout */
 #app-screen {
   display: flex;
   height: 100vh;
   width: 100vw;
 }
 
-/* Guild Server Rail (Far Left Icons) */
+/* Server Rail (Far Left) */
 .guilds-rail {
   width: 72px;
   background: var(--bg-tertiary);
@@ -101,46 +96,43 @@ body, html {
   align-items: center;
   padding-top: 12px;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .guild-icon {
   width: 48px;
   height: 48px;
   background: var(--accent);
-  border-radius: 50%;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: bold;
+  font-size: 14px;
   cursor: pointer;
-  transition: 0.2s;
 }
 
-.guild-icon:hover {
-  border-radius: 16px;
-}
-
-/* Sidebar Channels (Middle Left) */
+/* Sidebar Channels */
 .sidebar {
   width: 240px;
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(0,0,0,0.2);
 }
 
 .server-header {
   height: 48px;
   padding: 0 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(0,0,0,0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-weight: bold;
   color: #fff;
   font-size: 15px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .channel-container {
@@ -155,22 +147,17 @@ body, html {
   align-items: center;
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 700;
   padding: 12px 8px 4px 8px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .section-title button {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
-}
-
-.section-title button:hover {
-  color: #fff;
 }
 
 ul { list-style: none; }
@@ -183,60 +170,43 @@ li.channel-item {
   color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
-  font-weight: 500;
   margin-bottom: 2px;
 }
 
 li.channel-item:hover {
-  background: var(--bg-modifier-hover);
+  background: rgba(255,255,255,0.05);
   color: var(--text-normal);
 }
 
 li.channel-item.active {
-  background: var(--bg-modifier-active);
+  background: rgba(255,255,255,0.1);
   color: #fff;
 }
 
 .voice-members {
-  margin-left: 24px;
+  margin-left: 20px;
   font-size: 13px;
   color: var(--text-muted);
 }
 
-.voice-member-item {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  gap: 8px;
-}
-
-.voice-member-item .avatar-mini {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-/* Voice Connected Banner (Discord Style) */
+/* Voice Connected Panel (Card estilo Discord) */
 #voice-status-panel {
   display: none;
-  background: #232428;
-  border-bottom: 1px solid var(--bg-tertiary);
-  padding: 10px 12px;
+  background: #111214;
+  margin: 8px;
+  padding: 10px;
+  border-radius: 8px;
 }
 
 .voice-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.voice-icon {
-  color: var(--text-positive);
+  justify-content: space-between;
 }
 
 .voice-details {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .voice-details .status-text {
@@ -247,7 +217,7 @@ li.channel-item.active {
 
 .voice-details .channel-connected {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .hangup-btn {
@@ -258,7 +228,7 @@ li.channel-item.active {
   font-size: 16px;
 }
 
-/* User Controls Footer */
+/* Bottom User Bar */
 .user-panel {
   height: 52px;
   background: #232428;
@@ -266,6 +236,7 @@ li.channel-item.active {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .user-info {
@@ -284,18 +255,18 @@ li.channel-item.active {
   justify-content: center;
   color: #fff;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
 }
 
 .control-buttons {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
 .icon-btn {
@@ -309,24 +280,26 @@ li.channel-item.active {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .icon-btn:hover {
-  background: var(--bg-modifier-hover);
-  color: var(--text-normal);
+  background: rgba(255,255,255,0.07);
+  color: #fff;
 }
 
 .icon-btn.active {
   color: var(--text-positive);
 }
 
-/* Main Chat Area */
+/* Chat Center Area */
 .chat-area {
   flex: 1;
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  min-width: 0;
 }
 
 .chat-header {
@@ -337,24 +310,24 @@ li.channel-item.active {
   align-items: center;
   font-weight: bold;
   color: #fff;
-  gap: 8px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  font-size: 15px;
+  flex-shrink: 0;
 }
 
 #screen-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 8px;
-  padding: 12px;
-  background: var(--bg-tertiary);
-  max-height: 50vh;
+  padding: 8px;
+  background: #000;
+  max-height: 45vh;
   overflow-y: auto;
 }
 
 .screen-tile {
   position: relative;
-  background: #000;
-  border-radius: 8px;
+  background: #111;
+  border-radius: 6px;
   overflow: hidden;
   aspect-ratio: 16/9;
 }
@@ -370,9 +343,9 @@ li.channel-item.active {
   bottom: 8px;
   left: 8px;
   background: rgba(0, 0, 0, 0.7);
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   color: #fff;
 }
 
@@ -382,59 +355,62 @@ li.channel-item.active {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .message {
-  font-size: 15px;
-  line-height: 1.375rem;
+  font-size: 14px;
   color: var(--text-normal);
+  line-height: 1.4;
 }
 
 .message strong {
   color: #fff;
-  margin-right: 8px;
+  margin-right: 6px;
 }
 
 .system-message {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
   font-style: italic;
 }
 
 #chat-form {
-  padding: 0 16px 24px 16px;
+  padding: 0 16px 20px 16px;
+  flex-shrink: 0;
 }
 
 .input-wrapper {
   background: #383a40;
   border-radius: 8px;
-  padding: 0 16px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
 }
 
 #chat-input {
   width: 100%;
-  height: 44px;
+  height: 40px;
   background: transparent;
   border: none;
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   outline: none;
 }
 
-/* Members Sidebar (Far Right) */
+/* Right Members Panel */
 .members-sidebar {
   width: 240px;
   background: var(--bg-secondary);
   padding: 16px 8px;
   overflow-y: auto;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(0,0,0,0.2);
 }
 
 .member-group-title {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -444,19 +420,14 @@ li.channel-item.active {
 .member-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   padding: 6px 8px;
   border-radius: 4px;
-  cursor: pointer;
   color: var(--text-muted);
+  font-size: 13px;
 }
 
 .member-item:hover {
-  background: var(--bg-modifier-hover);
+  background: rgba(255,255,255,0.05);
   color: var(--text-normal);
-}
-
-.member-item .avatar {
-  width: 32px;
-  height: 32px;
 }
