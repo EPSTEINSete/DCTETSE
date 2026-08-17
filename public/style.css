@@ -8,14 +8,13 @@
   --text-positive: #23a55a;
   --text-danger: #f23f43;
   --accent: #5865f2;
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: var(--font-family);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   user-select: none;
 }
 
@@ -28,7 +27,6 @@ body, html {
   font-size: 14px;
 }
 
-/* Screen Switcher */
 #login-screen {
   display: flex;
   justify-content: center;
@@ -80,14 +78,12 @@ body, html {
   cursor: pointer;
 }
 
-/* Main App Layout */
 #app-screen {
   display: flex;
   height: 100vh;
   width: 100vw;
 }
 
-/* Server Rail (Far Left) */
 .guilds-rail {
   width: 72px;
   background: var(--bg-tertiary);
@@ -113,14 +109,21 @@ body, html {
   cursor: pointer;
 }
 
-/* Sidebar Channels */
 .sidebar {
   width: 240px;
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   flex-shrink: 0;
   border-right: 1px solid rgba(0,0,0,0.2);
+}
+
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
 }
 
 .server-header {
@@ -189,13 +192,12 @@ li.channel-item.active {
   color: var(--text-muted);
 }
 
-/* Voice Connected Panel (Card estilo Discord) */
+/* Card de Voz Conectada */
 #voice-status-panel {
   display: none;
-  background: #111214;
-  margin: 8px;
+  background: var(--bg-secondary-alt);
   padding: 10px;
-  border-radius: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .voice-info {
@@ -221,14 +223,22 @@ li.channel-item.active {
 }
 
 .hangup-btn {
-  background: transparent;
+  background: rgba(242, 63, 67, 0.2);
   border: none;
   color: var(--text-danger);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: 0.2s;
 }
 
-/* Bottom User Bar */
+.hangup-btn:hover {
+  background: var(--text-danger);
+  color: #fff;
+}
+
+/* Rodapé do Perfil */
 .user-panel {
   height: 52px;
   background: #232428;
@@ -258,15 +268,26 @@ li.channel-item.active {
   font-size: 13px;
 }
 
+.user-name-box {
+  display: flex;
+  flex-direction: column;
+}
+
 .user-name {
   font-size: 13px;
   font-weight: 600;
   color: #fff;
+  line-height: 1.1;
+}
+
+.user-tag {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .control-buttons {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
 .icon-btn {
@@ -288,11 +309,12 @@ li.channel-item.active {
   color: #fff;
 }
 
-.icon-btn.active {
-  color: var(--text-positive);
+.icon-btn.active-danger {
+  color: var(--text-danger);
+  background: rgba(242, 63, 67, 0.15);
 }
 
-/* Chat Center Area */
+/* Area de Chat Central */
 .chat-area {
   flex: 1;
   background: var(--bg-primary);
@@ -369,12 +391,6 @@ li.channel-item.active {
   margin-right: 6px;
 }
 
-.system-message {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
 #chat-form {
   padding: 0 16px 20px 16px;
   flex-shrink: 0;
@@ -398,7 +414,6 @@ li.channel-item.active {
   outline: none;
 }
 
-/* Right Members Panel */
 .members-sidebar {
   width: 240px;
   background: var(--bg-secondary);
@@ -415,19 +430,4 @@ li.channel-item.active {
   text-transform: uppercase;
   margin-bottom: 8px;
   padding-left: 8px;
-}
-
-.member-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.member-item:hover {
-  background: rgba(255,255,255,0.05);
-  color: var(--text-normal);
 }
