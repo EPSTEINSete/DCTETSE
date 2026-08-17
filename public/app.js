@@ -3,6 +3,7 @@ const socket = io();
 let myName = '';
 let localAudioStream = null;
 let localScreenStream = null;
+let isMuted = false;
 let sharingScreen = false;
 let currentTextChannel = 'geral';
 let currentVoiceChannel = null;
@@ -11,8 +12,6 @@ let voiceMembershipMap = {};
 
 const peers = {};        
 const remoteUsers = {};  
-const peerGainNodes = {}; 
-const peerVolumes = {};   
 let audioCtx = null;
 
 function getAudioCtx() {
@@ -21,11 +20,16 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+// UI Elements
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
 const nameInput = document.getElementById('name-input');
 const joinBtn = document.getElementById('join-btn');
 const screenBtn = document.getElementById('screen-btn');
+const muteBtn = document.getElementById('mute-btn');
+const disconnectVoiceBtn = document.getElementById('disconnect-voice-btn');
+const voiceStatusPanel = document.getElementById('voice-status-panel');
+const connectedChannelName = document.getElementById('connected-channel-name');
 const usersList = document.getElementById('users');
 const messagesDiv = document.getElementById('messages');
 const chatForm = document.getElementById('chat-form');
@@ -37,12 +41,12 @@ const addTextChannelBtn = document.getElementById('add-text-channel-btn');
 const addVoiceChannelBtn = document.getElementById('add-voice-channel-btn');
 const channelTitle = document.getElementById('channel-title');
 const myNameDisplay = document.getElementById('my-name-display');
+const myAvatar = document.getElementById('my-avatar');
 
 const rtcConfig = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
+    { urls: 'stun:stun1.l.google.com:19302' }
   ]
 };
 
@@ -55,13 +59,36 @@ function doJoin() {
   if (!name) return;
   myName = name;
   if (myNameDisplay) myNameDisplay.textContent = name;
+  if (myAvatar) myAvatar.textContent = name.charAt(0).toUpperCase();
   socket.emit('join', name);
   loginScreen.style.display = 'none';
   appScreen.style.display = 'flex';
-  renderUsers();
 }
 
-// Criar canais
+// Mutar Microfone
+muteBtn.onclick = () => {
+  if (!localAudioStream) return;
+  isMuted = !isMuted;
+  localAudioStream.getAudioTracks().forEach(track => {
+    track.enabled = !isMuted;
+  });
+  if (isMuted) {
+    muteBtn.textContent = '🔇';
+    muteBtn.classList.add('active-danger');
+    muteBtn.title = 'Desmutar Microfone';
+  } else {
+    muteBtn.textContent = '🎙️';
+    muteBtn.classList.remove('active-danger');
+    muteBtn.title = 'Mutar Microfone';
+  }
+};
+
+// Desconectar da Call pelo Botão Vermelho/Telefone
+disconnectVoiceBtn.onclick = () => {
+  leaveVoiceChannel(true);
+};
+
+// Canais
 addTextChannelBtn.onclick = () => {
   const name = prompt('Nome do canal de texto:');
   if (name && name.trim()) socket.emit('create-channel', { name: name.trim(), type: 'text' });
@@ -82,24 +109,10 @@ socket.on('channels', (list) => {
   }
 });
 
-socket.on('channel-deleted', (id) => {
-  if (id === currentTextChannel) switchTextChannel('geral');
-});
-
-socket.on('force-leave-voice', (channelId) => {
-  if (currentVoiceChannel === channelId) leaveVoiceChannel(true);
-});
-
-socket.on('channel-history', ({ channelId, messages }) => {
-  if (channelId !== currentTextChannel) return;
-  messagesDiv.innerHTML = '';
-  messages.forEach(m => addMessage(m.name, m.text));
-});
-
 function switchTextChannel(id) {
   if (!channels[id] || channels[id].type !== 'text') id = 'geral';
   currentTextChannel = id;
-  channelTitle.textContent = 'EPSTEIN 22 — #' + channels[id].name;
+  channelTitle.textContent = '# ' + channels[id].name;
   messagesDiv.innerHTML = '';
   socket.emit('switch-channel', id);
   renderChannels();
@@ -110,54 +123,17 @@ function renderChannels() {
   voiceChannelListEl.innerHTML = '';
 
   Object.entries(channels).forEach(([id, c]) => {
+    const li = document.createElement('li');
+    li.className = 'channel-item' + (id === currentTextChannel || id === currentVoiceChannel ? ' active' : '');
+    
     if (c.type === 'text') {
-      const li = document.createElement('li');
-      li.className = id === currentTextChannel ? 'active' : '';
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'channel-name';
-      nameSpan.textContent = '# ' + c.name;
-      nameSpan.onclick = () => switchTextChannel(id);
-      li.appendChild(nameSpan);
-
-      if (id !== 'geral') {
-        const del = document.createElement('span');
-        del.className = 'delete-channel';
-        del.textContent = '✕';
-        del.onclick = (e) => {
-          e.stopPropagation();
-          if (confirm(`Apagar canal "#${c.name}"?`)) socket.emit('delete-channel', id);
-        };
-        li.appendChild(del);
-      }
-
+      li.textContent = '# ' + c.name;
+      li.onclick = () => switchTextChannel(id);
       textChannelListEl.appendChild(li);
     } else {
-      const li = document.createElement('li');
-      li.className = 'voice-channel' + (id === currentVoiceChannel ? ' active' : '');
-
-      const row = document.createElement('div');
-      row.className = 'voice-channel-row';
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'channel-name';
-      nameSpan.textContent = '🔊 ' + c.name + (id === currentVoiceChannel ? ' (Conectado)' : '');
-      nameSpan.onclick = () => toggleVoiceChannel(id);
-      row.appendChild(nameSpan);
-
-      if (id !== 'voz-geral') {
-        const del = document.createElement('span');
-        del.className = 'delete-channel';
-        del.textContent = '✕';
-        del.onclick = (e) => {
-          e.stopPropagation();
-          if (confirm(`Apagar canal de voz "${c.name}"?`)) socket.emit('delete-channel', id);
-        };
-        row.appendChild(del);
-      }
-
-      li.appendChild(row);
-
+      li.textContent = '🔊 ' + c.name;
+      li.onclick = () => toggleVoiceChannel(id);
+      
       const members = voiceMembershipMap[id] || [];
       if (members.length) {
         const memDiv = document.createElement('div');
@@ -165,13 +141,11 @@ function renderChannels() {
         memDiv.textContent = members.map(m => '• ' + m.name).join(' ');
         li.appendChild(memDiv);
       }
-
       voiceChannelListEl.appendChild(li);
     }
   });
 }
 
-// Gestão de áudio / Voz
 function toggleVoiceChannel(id) {
   if (currentVoiceChannel === id) {
     leaveVoiceChannel(true);
@@ -186,14 +160,18 @@ async function joinVoiceChannel(id) {
   try {
     localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch (err) {
-    alert('Permissão de microfone negada ou erro de mídia: ' + err.message);
+    alert('Erro ao acessar microfone: ' + err.message);
     return;
   }
 
   getAudioCtx();
   currentVoiceChannel = id;
   socket.emit('join-voice-channel', id);
+  
+  // Atualiza a UI para canal conectado
   screenBtn.disabled = false;
+  voiceStatusPanel.style.display = 'block';
+  connectedChannelName.textContent = '/ ' + (channels[id] ? channels[id].name : 'Voz');
   renderChannels();
 }
 
@@ -204,7 +182,6 @@ function leaveVoiceChannel(clearChannel) {
   Object.keys(peers).forEach(id => {
     if (peers[id]) peers[id].close();
     delete peers[id];
-    delete peerGainNodes[id];
     removeScreenTile(id);
   });
 
@@ -217,8 +194,8 @@ function leaveVoiceChannel(clearChannel) {
       localAudioStream = null;
     }
     screenBtn.disabled = true;
+    voiceStatusPanel.style.display = 'none';
   }
-  renderUsers();
   renderChannels();
 }
 
@@ -230,53 +207,30 @@ socket.on('voice-membership', (map) => {
 socket.on('voice-peers', ({ channelId, peers: peerList }) => {
   if (channelId !== currentVoiceChannel) return;
   peerList.forEach(p => createPeerConnection(p.id));
-  renderUsers();
 });
 
 socket.on('voice-user-joined', ({ id, channelId }) => {
   if (channelId !== currentVoiceChannel) return;
   createPeerConnection(id);
-  renderUsers();
 });
 
 socket.on('voice-user-left', ({ id }) => {
   if (peers[id]) { peers[id].close(); delete peers[id]; }
-  delete peerGainNodes[id];
   removeScreenTile(id);
-  renderUsers();
 });
 
 // Usuários
 function renderUsers() {
   usersList.innerHTML = '';
   const me = document.createElement('li');
+  me.className = 'channel-item';
   me.textContent = myName + ' (você)';
   usersList.appendChild(me);
 
   Object.entries(remoteUsers).forEach(([id, name]) => {
     const li = document.createElement('li');
-    li.className = 'user-item';
-
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = name;
-    li.appendChild(nameSpan);
-
-    if (peerGainNodes[id]) {
-      const vol = document.createElement('input');
-      vol.type = 'range';
-      vol.min = 0;
-      vol.max = 200;
-      vol.value = peerVolumes[id] || 100;
-      vol.className = 'volume-slider';
-      vol.title = `Volume de ${name}: ${vol.value}%`;
-      vol.oninput = () => {
-        const v = parseInt(vol.value, 10);
-        peerVolumes[id] = v;
-        if (peerGainNodes[id]) peerGainNodes[id].gain.value = v / 100;
-      };
-      li.appendChild(vol);
-    }
-
+    li.className = 'channel-item';
+    li.textContent = name;
     usersList.appendChild(li);
   });
 }
@@ -289,16 +243,13 @@ socket.on('existing-users', (list) => {
 socket.on('user-joined', ({ id, name }) => {
   remoteUsers[id] = name;
   renderUsers();
-  addSystemMessage(`${name} entrou no servidor.`);
 });
 
-socket.on('user-left', ({ id, name }) => {
+socket.on('user-left', ({ id }) => {
   delete remoteUsers[id];
   if (peers[id]) { peers[id].close(); delete peers[id]; }
-  delete peerGainNodes[id];
   removeScreenTile(id);
   renderUsers();
-  addSystemMessage(`${name} saiu.`);
 });
 
 // Chat
@@ -327,14 +278,6 @@ function addMessage(name, text) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-function addSystemMessage(text) {
-  const div = document.createElement('div');
-  div.className = 'system-message';
-  div.textContent = text;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
 // WebRTC
 function createPeerConnection(peerId) {
   if (peers[peerId]) return peers[peerId];
@@ -350,12 +293,7 @@ function createPeerConnection(peerId) {
     if (e.track.kind === 'audio') {
       const ctx = getAudioCtx();
       const source = ctx.createMediaStreamSource(stream);
-      const gain = ctx.createGain();
-      gain.gain.value = (peerVolumes[peerId] || 100) / 100;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      peerGainNodes[peerId] = gain;
-      renderUsers();
+      source.connect(ctx.destination);
     } else if (e.track.kind === 'video') {
       addScreenTile(peerId, stream, false);
     }
@@ -366,15 +304,11 @@ function createPeerConnection(peerId) {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       socket.emit('signal', { to: peerId, data: { sdp: pc.localDescription } });
-    } catch (err) { console.error(err); }
+    } catch (err) {}
   };
 
-  if (localAudioStream) {
-    localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
-  }
-  if (localScreenStream) {
-    localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
-  }
+  if (localAudioStream) localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
+  if (localScreenStream) localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
 
   return pc;
 }
@@ -395,29 +329,31 @@ socket.on('signal', async ({ from, data }) => {
       await pc.setRemoteDescription(desc);
     }
   } else if (data.candidate) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (err) { console.error(err); }
+    try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (err) {}
   }
 });
 
-// Tela
+// Compartilhamento
 screenBtn.onclick = async () => {
-  if (!currentVoiceChannel) {
-    alert('Entre em um canal de voz primeiro!');
+  if (!currentVoiceChannel) return;
+
+  if (sharingScreen) {
+    stopScreenShare();
     return;
   }
-  if (!sharingScreen) {
-    try {
-      localScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      Object.values(peers).forEach(pc => {
-        localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
-      });
-      addScreenTile('me', localScreenStream, true);
-      sharingScreen = true;
-      screenBtn.textContent = '🛑 Parar transmissão';
-      localScreenStream.getVideoTracks()[0].onended = stopScreenShare;
-    } catch (err) {}
-  } else {
-    stopScreenShare();
+
+  try {
+    localScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    Object.values(peers).forEach(pc => {
+      localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
+    });
+    addScreenTile('me', localScreenStream, true);
+    sharingScreen = true;
+    screenBtn.textContent = '🛑';
+    localScreenStream.getVideoTracks()[0].onended = stopScreenShare;
+  } catch (err) {
+    sharingScreen = false;
+    screenBtn.textContent = '🖥️';
   }
 };
 
@@ -425,32 +361,24 @@ function stopScreenShare() {
   if (!localScreenStream) return;
   localScreenStream.getTracks().forEach(t => t.stop());
   Object.values(peers).forEach(pc => {
-    pc.getSenders().forEach(s => { if (s.track && s.track.kind === 'video') pc.removeTrack(s); });
+    pc.getSenders().forEach(s => {
+      if (s.track && s.track.kind === 'video') pc.removeTrack(s);
+    });
   });
   removeScreenTile('me');
   localScreenStream = null;
   sharingScreen = false;
-  screenBtn.textContent = '🖥️ Compartilhar tela';
+  screenBtn.textContent = '🖥️';
 }
 
 function addScreenTile(id, stream, isLocal) {
   let tile = document.getElementById('screen-' + id);
   if (!tile) {
-    tile = document.createElement('div');
-    tile.className = 'screen-tile';
-    tile.id = 'screen-' + id;
-
-    const video = document.createElement('video');
-    video.autoplay = true;
-    video.playsInline = true;
-    if (isLocal) video.muted = true;
+    tile = document.createElement('div'); tile.className = 'screen-tile'; tile.id = 'screen-' + id;
+    const video = document.createElement('video'); video.autoplay = true; video.playsInline = true; if (isLocal) video.muted = true;
     tile.appendChild(video);
-
-    const label = document.createElement('div');
-    label.className = 'screen-label';
-    label.textContent = isLocal ? 'Você' : (remoteUsers[id] || 'Alguém');
+    const label = document.createElement('div'); label.className = 'screen-label'; label.textContent = isLocal ? 'Você' : (remoteUsers[id] || 'Alguém');
     tile.appendChild(label);
-
     screenGrid.appendChild(tile);
   }
   tile.querySelector('video').srcObject = stream;
