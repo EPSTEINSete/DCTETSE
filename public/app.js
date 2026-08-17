@@ -125,28 +125,71 @@ function renderChannels() {
   voiceChannelListEl.innerHTML = '';
 
   Object.entries(channels).forEach(([id, c]) => {
-    const li = document.createElement('li');
-    li.className = 'channel-item' + (id === currentTextChannel || id === currentVoiceChannel ? ' active' : '');
-    
     if (c.type === 'text') {
+      const li = document.createElement('li');
+      li.className = 'channel-item' + (id === currentTextChannel ? ' active' : '');
       li.textContent = '# ' + c.name;
       li.onclick = () => switchTextChannel(id);
       textChannelListEl.appendChild(li);
     } else {
+      // Canal de voz no estilo Discord com membros em lista vertical
+      const voiceContainer = document.createElement('div');
+      voiceContainer.style.marginBottom = '4px';
+
+      const li = document.createElement('div');
+      li.className = 'channel-item' + (id === currentVoiceChannel ? ' active' : '');
       li.textContent = '🔊 ' + c.name;
       li.onclick = () => toggleVoiceChannel(id);
-      
+      voiceContainer.appendChild(li);
+
       const members = voiceMembershipMap[id] || [];
-      if (members.length) {
-        const memDiv = document.createElement('div');
-        memDiv.className = 'voice-members';
-        memDiv.style.fontSize = '0.85em';
-        memDiv.style.color = '#b9bbbe';
-        memDiv.style.paddingLeft = '10px';
-        memDiv.textContent = members.map(m => '• ' + m.name).join(' ');
-        li.appendChild(memDiv);
+      if (members.length > 0) {
+        const memListDiv = document.createElement('div');
+        memListDiv.style.paddingLeft = '16px';
+        memListDiv.style.display = 'flex';
+        memListDiv.style.flexDirection = 'column';
+        memListDiv.style.gap = '2px';
+        memListDiv.style.marginTop = '2px';
+
+        members.forEach(m => {
+          const memItem = document.createElement('div');
+          memItem.style.display = 'flex';
+          memItem.style.alignItems = 'center';
+          memItem.style.gap = '6px';
+          memItem.style.padding = '4px 6px';
+          memItem.style.borderRadius = '4px';
+          memItem.style.fontSize = '13px';
+          memItem.style.color = '#949ba4';
+
+          const avatarMini = document.createElement('div');
+          avatarMini.textContent = m.name.charAt(0).toUpperCase();
+          avatarMini.style.width = '20px';
+          avatarMini.style.height = '20px';
+          avatarMini.style.borderRadius = '50%';
+          avatarMini.style.background = '#5865f2';
+          avatarMini.style.color = '#fff';
+          avatarMini.style.display = 'flex';
+          avatarMini.style.alignItems = 'center';
+          avatarMini.style.justifyContent = 'center';
+          avatarMini.style.fontSize = '10px';
+          avatarMini.style.fontWeight = 'bold';
+          avatarMini.style.flexShrink = '0';
+
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = m.name;
+          nameSpan.style.whiteSpace = 'nowrap';
+          nameSpan.style.overflow = 'hidden';
+          nameSpan.style.textOverflow = 'ellipsis';
+
+          memItem.appendChild(avatarMini);
+          memItem.appendChild(nameSpan);
+          memListDiv.appendChild(memItem);
+        });
+
+        voiceContainer.appendChild(memListDiv);
       }
-      voiceChannelListEl.appendChild(li);
+
+      voiceChannelListEl.appendChild(voiceContainer);
     }
   });
 }
@@ -385,7 +428,6 @@ function removeAudioElement(peerId) {
   if (audio) audio.remove();
 }
 
-// Compartilhamento de Tela com Captura de Áudio do Sistema
 screenBtn.onclick = async () => {
   if (!currentVoiceChannel) return;
 
@@ -451,7 +493,7 @@ function addScreenTile(id, stream, isLocal) {
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = isLocal; // O vídeo local é mutado, o remoto reproduz imagem corretamente
+    video.muted = isLocal;
     tile.appendChild(video);
 
     const label = document.createElement('div');
