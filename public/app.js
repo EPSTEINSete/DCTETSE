@@ -180,6 +180,8 @@ async function joinVoiceChannel(id) {
   currentVoiceChannel = id;
   socket.emit('join-voice-channel', id);
   
+  playJoinSound(); // Som ao entrar na call
+
   screenBtn.disabled = false;
   voiceStatusPanel.style.display = 'block';
   connectedChannelName.textContent = '/ ' + (channels[id] ? channels[id].name : 'Voz');
@@ -188,6 +190,9 @@ async function joinVoiceChannel(id) {
 
 function leaveVoiceChannel(clearChannel) {
   if (!currentVoiceChannel) return;
+
+  playLeaveSound(); // Som ao sair da call
+
   socket.emit('leave-voice-channel');
 
   Object.keys(peers).forEach(id => {
@@ -432,6 +437,7 @@ function removeScreenTile(id) {
   const tile = document.getElementById('screen-' + id);
   if (tile) tile.remove();
 }
+
 // Som de entrada (dois tons ascendentes)
 function playJoinSound() {
   const ctx = getAudioCtx();
