@@ -19,14 +19,14 @@
 
   <!-- App Interface -->
   <div id="app-screen" style="display: none;">
-    <!-- Barra da Esquerda (Ícone do Servidor) -->
+    <!-- Lateral Esquerda - Ícones de Servidores -->
     <div class="guilds-rail">
       <div class="guild-icon" title="EPSTEIN 22">EP</div>
     </div>
 
     <!-- Sidebar do Servidor -->
     <div class="sidebar">
-      <div style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+      <div class="sidebar-top">
         <div class="server-header">
           <span>EPSTEIN 22</span>
           <span>∨</span>
@@ -47,31 +47,35 @@
         </div>
       </div>
 
-      <!-- Rodapé (Card de Voz e Perfil) -->
-      <div>
+      <!-- Rodapé (Card de Voz Conectada + Controle do Usuário) -->
+      <div class="sidebar-bottom">
         <div id="voice-status-panel">
           <div class="voice-info">
             <div class="voice-details">
-              <span class="status-text">📡 Voz conectada</span>
-              <span class="channel-connected" id="connected-channel-name">/ EPSTEIN 22</span>
+              <span class="status-text">🔊 Voz conectada</span>
+              <span class="channel-connected" id="connected-channel-name">/ Geral</span>
             </div>
-            <button class="hangup-btn" id="disconnect-voice-btn" title="Desconectar">✕</button>
+            <button class="hangup-btn" id="disconnect-voice-btn" title="Desconectar da Call">📞</button>
           </div>
         </div>
 
         <div class="user-panel">
           <div class="user-info">
             <div class="avatar" id="my-avatar">U</div>
-            <span class="user-name" id="my-name-display">Você</span>
+            <div class="user-name-box">
+              <span class="user-name" id="my-name-display">Você</span>
+              <span class="user-tag">#0001</span>
+            </div>
           </div>
           <div class="control-buttons">
+            <button class="icon-btn" id="mute-btn" title="Mutar/Desmutar Microfone">🎙️</button>
             <button class="icon-btn" id="screen-btn" disabled title="Compartilhar Tela">🖥️</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Chat Central -->
+    <!-- Area do Chat Central -->
     <div class="chat-area">
       <div class="chat-header" id="channel-title"># geral</div>
       <div id="screen-grid"></div>
@@ -83,7 +87,7 @@
       </form>
     </div>
 
-    <!-- Sidebar de Membros -->
+    <!-- Painel de Membros à Direita -->
     <div class="members-sidebar">
       <div class="member-group-title">ONLINE</div>
       <ul id="users"></ul>
