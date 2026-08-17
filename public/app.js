@@ -24,7 +24,6 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-// Elementos da UI
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
 const nameInput = document.getElementById('name-input');
@@ -54,7 +53,6 @@ const rtcConfig = {
   ]
 };
 
-// Login
 joinBtn.onclick = doJoin;
 nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
 
@@ -74,7 +72,6 @@ document.body.addEventListener('click', () => {
   getAudioCtx();
 }, { once: true });
 
-// Mutar Microfone
 muteBtn.onclick = () => {
   if (!localAudioStream) return;
   isMuted = !isMuted;
@@ -84,20 +81,16 @@ muteBtn.onclick = () => {
   if (isMuted) {
     muteBtn.textContent = '🔇';
     muteBtn.classList.add('active-danger');
-    muteBtn.title = 'Desmutar Microfone';
   } else {
     muteBtn.textContent = '🎙️';
     muteBtn.classList.remove('active-danger');
-    muteBtn.title = 'Mutar Microfone';
   }
 };
 
-// Desconectar Voz
 disconnectVoiceBtn.onclick = () => {
   leaveVoiceChannel(true);
 };
 
-// Canais
 addTextChannelBtn.onclick = () => {
   const name = prompt('Nome do canal de texto:');
   if (name && name.trim()) socket.emit('create-channel', { name: name.trim(), type: 'text' });
@@ -270,7 +263,6 @@ socket.on('user-left', ({ id }) => {
   renderUsers();
 });
 
-// Chat de texto
 socket.on('chat-message', (msg) => {
   if (msg.channelId !== currentTextChannel) return;
   addMessage(msg.name, msg.text);
@@ -296,7 +288,6 @@ function addMessage(name, text) {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Conexão WebRTC e Sinalização
 function createPeerConnection(peerId, isInitiator) {
   if (peers[peerId]) return peers[peerId];
   const pc = new RTCPeerConnection(rtcConfig);
@@ -394,7 +385,7 @@ function removeAudioElement(peerId) {
   if (audio) audio.remove();
 }
 
-// Compartilhamento de Tela
+// Compartilhamento de Tela com Captura de Áudio do Sistema
 screenBtn.onclick = async () => {
   if (!currentVoiceChannel) return;
 
@@ -404,7 +395,10 @@ screenBtn.onclick = async () => {
   }
 
   try {
-    localScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    localScreenStream = await navigator.mediaDevices.getDisplayMedia({ 
+      video: true, 
+      audio: true 
+    });
     sharingScreen = true;
     screenBtn.textContent = '🛑';
 
@@ -431,7 +425,11 @@ function stopScreenShare() {
   for (const peerId in peers) {
     const pc = peers[peerId];
     pc.getSenders().forEach(s => {
-      if (s.track && s.track.kind === 'video') pc.removeTrack(s);
+      if (s.track && (s.track.kind === 'video' || s.track.kind === 'audio')) {
+        if (s.track !== localAudioStream?.getAudioTracks()[0]) {
+          pc.removeTrack(s);
+        }
+      }
     });
     socket.emit('signal', { to: peerId, data: { type: 'screen-stopped' } });
     sendOffer(peerId);
@@ -453,7 +451,7 @@ function addScreenTile(id, stream, isLocal) {
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    if (isLocal) video.muted = true;
+    video.muted = isLocal; // O vídeo local é mutado, o remoto reproduz imagem corretamente
     tile.appendChild(video);
 
     const label = document.createElement('div');
@@ -471,7 +469,9 @@ function addScreenTile(id, stream, isLocal) {
 
     screenGrid.appendChild(tile);
   }
-  tile.querySelector('video').srcObject = stream;
+  const videoEl = tile.querySelector('video');
+  videoEl.srcObject = stream;
+  videoEl.play().catch(() => {});
 }
 
 function removeScreenTile(id) {
@@ -479,7 +479,6 @@ function removeScreenTile(id) {
   if (tile) tile.remove();
 }
 
-// Sons Sintéticos estilo Discord
 function playJoinSound() {
   const ctx = getAudioCtx();
   if (!ctx) return;
