@@ -1,13 +1,13 @@
 {
   "name": "epstein-app",
   "version": "1.0.0",
-  "description": "Chat de voz com conexao e desconexao",
+  "description": "App estilo Discord com texto, voz e compartilhamento de tela",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.13.0"
+    "socket.io": "^4.7.2"
   }
 }
