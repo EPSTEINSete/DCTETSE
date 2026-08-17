@@ -318,6 +318,12 @@ function createPeerConnection(peerId, isInitiator) {
     }
   };
 
+  pc.onnegotiationneeded = async () => {
+    try {
+      sendOffer(peerId);
+    } catch (err) {}
+  };
+
   if (localAudioStream) {
     localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
   }
@@ -353,13 +359,17 @@ socket.on('signal', async ({ from, data }) => {
   }
 
   if (data.sdp) {
-    const desc = new RTCSessionDescription(data.sdp);
-    await pc.setRemoteDescription(desc);
-    if (desc.type === 'offer') {
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit('signal', { to: from, data: { sdp: pc.localDescription } });
-    }
+    try {
+      const desc = new RTCSessionDescription(data.sdp);
+      if (desc.type === 'offer') {
+        await pc.setRemoteDescription(desc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('signal', { to: from, data: { sdp: pc.localDescription } });
+      } else if (desc.type === 'answer') {
+        await pc.setRemoteDescription(desc);
+      }
+    } catch (err) {}
   } else if (data.candidate) {
     try {
       await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
@@ -451,7 +461,6 @@ function addScreenTile(id, stream, isLocal) {
     label.textContent = (isLocal ? 'Você' : (remoteUsers[id] || 'Alguém')) + ' (Clique para Tela Cheia)';
     tile.appendChild(label);
 
-    // Clique na transmissão para abrir em Tela Cheia
     tile.onclick = () => {
       if (!document.fullscreenElement) {
         tile.requestFullscreen().catch(() => {});
