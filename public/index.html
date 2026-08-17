@@ -11,46 +11,84 @@
   <div id="login-screen">
     <div class="login-card">
       <h1>EPSTEIN 22</h1>
-      <p>Digite seu apelido para entrar</p>
-      <input type="text" id="name-input" placeholder="Seu apelido..." autofocus maxlength="20">
+      <p>Boas-vindas de volta!</p>
+      <input type="text" id="name-input" placeholder="Digite seu nome de usuário" autofocus maxlength="20">
       <button id="join-btn">Entrar</button>
     </div>
   </div>
 
-  <!-- Tela Principal do App -->
+  <!-- App Discord Interface -->
   <div id="app-screen" style="display: none;">
+    <!-- Trilho Lateral do Servidor -->
+    <div class="guilds-rail">
+      <div class="guild-icon" title="EPSTEIN 22">EP</div>
+    </div>
+
+    <!-- Sidebar de Canais -->
     <div class="sidebar">
-      <div class="server-title">EPSTEIN 22</div>
-      
-      <div class="section-title">
-        <span>CANAIS DE TEXTO</span>
-        <button id="add-text-channel-btn" title="Criar canal de texto">+</button>
+      <div>
+        <div class="server-header">
+          <span>EPSTEIN 22</span>
+          <span>∨</span>
+        </div>
+
+        <div class="channel-container">
+          <div class="section-title">
+            <span>Canais de texto</span>
+            <button id="add-text-channel-btn" title="Criar Canal">+</button>
+          </div>
+          <ul id="text-channel-list"></ul>
+
+          <div class="section-title">
+            <span>Canais de voz</span>
+            <button id="add-voice-channel-btn" title="Criar Canal">+</button>
+          </div>
+          <ul id="voice-channel-list"></ul>
+        </div>
       </div>
-      <ul id="text-channel-list"></ul>
 
-      <div class="section-title">
-        <span>CANAIS DE VOZ</span>
-        <button id="add-voice-channel-btn" title="Criar canal de voz">+</button>
-      </div>
-      <ul id="voice-channel-list"></ul>
+      <!-- Rodapé do Usuário e Conexão de Voz -->
+      <div>
+        <div id="voice-status-panel">
+          <div class="voice-info">
+            <span class="voice-icon">📡</span>
+            <div class="voice-details">
+              <div class="status-text">Voz conectada</div>
+              <div class="channel-connected" id="connected-channel-name">/ EPSTEIN 22</div>
+            </div>
+            <button class="hangup-btn" id="disconnect-voice-btn" title="Desconectar">✕</button>
+          </div>
+        </div>
 
-      <div class="section-title">MEMBROS ONLINE</div>
-      <ul id="users"></ul>
-
-      <div class="user-panel">
-        <span id="my-name-display">Você</span>
-        <button id="screen-btn" disabled>🖥️ Compartilhar tela</button>
+        <div class="user-panel">
+          <div class="user-info">
+            <div class="avatar" id="my-avatar">U</div>
+            <span class="user-name" id="my-name-display">Você</span>
+          </div>
+          <div class="control-buttons">
+            <button class="icon-btn" id="screen-btn" disabled title="Compartilhar Tela">🖥️</button>
+            <button class="icon-btn" title="Configurações">⚙️</button>
+          </div>
+        </div>
       </div>
     </div>
 
+    <!-- Area Central do Chat -->
     <div class="chat-area">
-      <div class="chat-header" id="channel-title">EPSTEIN 22 — #geral</div>
+      <div class="chat-header" id="channel-title"># geral</div>
       <div id="screen-grid"></div>
       <div id="messages"></div>
       <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Enviar mensagem..." autocomplete="off">
-        <button type="submit">Enviar</button>
+        <div class="input-wrapper">
+          <input type="text" id="chat-input" placeholder="Conversar em #geral" autocomplete="off">
+        </div>
       </form>
+    </div>
+
+    <!-- Sidebar de Membros à Direita -->
+    <div class="members-sidebar">
+      <div class="member-group-title">Online — <span id="online-count">1</span></div>
+      <ul id="users"></ul>
     </div>
   </div>
 
