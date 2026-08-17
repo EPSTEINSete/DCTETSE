@@ -365,7 +365,7 @@ function createPeerConnection(peerId, isInitiator) {
     localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
   }
   if (localScreenStream) {
-    localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
+    localScreenStream.getVideoTracks().forEach(t => pc.addTrack(t, localScreenStream));
   }
 
   if (isInitiator) {
@@ -442,7 +442,7 @@ screenBtn.onclick = async () => {
   try {
     localScreenStream = await navigator.mediaDevices.getDisplayMedia({ 
       video: true, 
-      audio: true 
+      audio: false // Correção: Apenas vídeo para não conflitar com a voz do microfone
     });
     sharingScreen = true;
     screenBtn.textContent = '🛑';
@@ -451,7 +451,7 @@ screenBtn.onclick = async () => {
 
     for (const peerId in peers) {
       const pc = peers[peerId];
-      localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
+      localScreenStream.getVideoTracks().forEach(t => pc.addTrack(t, localScreenStream));
       sendOffer(peerId);
     }
 
@@ -470,10 +470,8 @@ function stopScreenShare() {
   for (const peerId in peers) {
     const pc = peers[peerId];
     pc.getSenders().forEach(s => {
-      if (s.track && (s.track.kind === 'video' || s.track.kind === 'audio')) {
-        if (s.track !== localAudioStream?.getAudioTracks()[0]) {
-          pc.removeTrack(s);
-        }
+      if (s.track && s.track.kind === 'video') {
+        pc.removeTrack(s);
       }
     });
     socket.emit('signal', { to: peerId, data: { type: 'screen-stopped' } });
