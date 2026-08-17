@@ -30,7 +30,9 @@ io.on('connection', (socket) => {
   console.log('Usuário conectado:', socket.id);
 
   socket.on('join', (name) => {
-    if (name) users[socket.id] = name;
+    if (name) {
+      users[socket.id] = name;
+    }
     socket.emit('channels', channels);
     socket.broadcast.emit('user-joined', { id: socket.id, name: users[socket.id] });
     
@@ -39,7 +41,7 @@ io.on('connection', (socket) => {
       .map(([id, uname]) => ({ id, name: uname }));
     socket.emit('existing-users', existingUsers);
     
-    io.emit('voice-membership', getVoiceMembershipMap());
+    socket.emit('voice-membership', getVoiceMembershipMap());
   });
 
   socket.on('create-channel', ({ name, type }) => {
@@ -50,7 +52,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join-voice-channel', ({ channelId, name }) => {
+  socket.on('join-voice-channel', (data) => {
+    let channelId = typeof data === 'object' && data !== null ? data.channelId : data;
+    let name = typeof data === 'object' && data !== null ? data.name : null;
+
     if (name) {
       users[socket.id] = name;
     }
