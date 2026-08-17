@@ -30,9 +30,9 @@ io.on('connection', (socket) => {
   console.log('Usuário conectado:', socket.id);
 
   socket.on('join', (name) => {
-    users[socket.id] = name;
+    if (name) users[socket.id] = name;
     socket.emit('channels', channels);
-    socket.broadcast.emit('user-joined', { id: socket.id, name });
+    socket.broadcast.emit('user-joined', { id: socket.id, name: users[socket.id] });
     
     const existingUsers = Object.entries(users)
       .filter(([id]) => id !== socket.id)
@@ -50,7 +50,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join-voice-channel', (channelId) => {
+  socket.on('join-voice-channel', ({ channelId, name }) => {
+    if (name) {
+      users[socket.id] = name;
+    }
+
     // Remove de qualquer outro canal de voz anterior
     for (const chId in voiceRooms) {
       if (voiceRooms[chId].has(socket.id)) {
