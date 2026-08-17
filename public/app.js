@@ -132,7 +132,6 @@ function renderChannels() {
       li.onclick = () => switchTextChannel(id);
       textChannelListEl.appendChild(li);
     } else {
-      // Canal de voz no estilo Discord com membros em lista vertical
       const voiceContainer = document.createElement('div');
       voiceContainer.style.marginBottom = '4px';
 
@@ -214,7 +213,7 @@ async function joinVoiceChannel(id) {
 
   getAudioCtx();
   currentVoiceChannel = id;
-  socket.emit('join-voice-channel', id);
+  socket.emit('join-voice-channel', { channelId: id, name: myName });
   
   playJoinSound();
 
