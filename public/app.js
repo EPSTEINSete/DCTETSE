@@ -17,18 +17,34 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos idênticos ao Discord com espaçamento e margens corretas para o painel lateral
+// Estilos idênticos ao Discord com painel lateral fixo no canto direito absoluto e responsivo para mobile
 if (!document.getElementById('discord-extra-styles')) {
   const style = document.createElement('style');
   style.id = 'discord-extra-styles';
   style.textContent = `
-    /* Garante o espaçamento correto do painel de membros online estilo Discord */
-    .members-sidebar, #users {
-      margin-left: 16px;
-      padding: 12px 8px;
-      min-width: 240px;
+    /* Garante que a tela principal deixe espaço para a barra lateral direita */
+    #app-screen {
+      position: relative !important;
+      padding-right: 240px;
       box-sizing: border-box;
     }
+
+    /* Painel lateral de membros fixado no canto direito absoluto igual ao Discord */
+    .members-sidebar, #users {
+      position: absolute !important;
+      right: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 240px !important;
+      background: #2b2d31;
+      border-left: 1px solid #1f2023;
+      padding: 16px 8px !important;
+      margin: 0 !important;
+      box-sizing: border-box;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
     .user-discord-item {
       display: flex;
       align-items: center;
@@ -67,6 +83,16 @@ if (!document.getElementById('discord-extra-styles')) {
       width: 55px;
       cursor: pointer;
       accent-color: #5865f2;
+    }
+
+    /* Responsivo para celular: remove o espaçamento e oculta a barra lateral no mobile igual ao Discord */
+    @media (max-width: 768px) {
+      #app-screen {
+        padding-right: 0 !important;
+      }
+      .members-sidebar, #users {
+        display: none !important;
+      }
     }
   `;
   document.head.appendChild(style);
