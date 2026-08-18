@@ -345,11 +345,18 @@ function createPeerConnection(peerId, isInitiator) {
     }
   };
 
+  // Agrupador para combinar voz do microfone e áudio da transmissão do mesmo colega
+  let remoteAudioStream = new MediaStream();
+
   pc.ontrack = (e) => {
-    const stream = e.streams[0] || new MediaStream([e.track]);
     if (e.track.kind === 'audio') {
-      attachAudioTrack(peerId, stream);
+      remoteAudioStream.addTrack(e.track);
+      attachAudioTrack(peerId, remoteAudioStream);
+      e.track.onended = () => {
+        remoteAudioStream.removeTrack(e.track);
+      };
     } else if (e.track.kind === 'video') {
+      const stream = e.streams[0] || new MediaStream([e.track]);
       addScreenTile(peerId, stream, false);
       e.track.onended = () => removeScreenTile(peerId);
     }
@@ -365,7 +372,7 @@ function createPeerConnection(peerId, isInitiator) {
     localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
   }
   if (localScreenStream) {
-    localScreenStream.getVideoTracks().forEach(t => pc.addTrack(t, localScreenStream));
+    localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
   }
 
   if (isInitiator) {
@@ -442,7 +449,7 @@ screenBtn.onclick = async () => {
   try {
     localScreenStream = await navigator.mediaDevices.getDisplayMedia({ 
       video: true, 
-      audio: false // Correção: Apenas vídeo para não conflitar com a voz do microfone
+      audio: true // Ativado para transmitir o som da aba/sistema junto com a tela
     });
     sharingScreen = true;
     screenBtn.textContent = '🛑';
@@ -451,7 +458,7 @@ screenBtn.onclick = async () => {
 
     for (const peerId in peers) {
       const pc = peers[peerId];
-      localScreenStream.getVideoTracks().forEach(t => pc.addTrack(t, localScreenStream));
+      localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
       sendOffer(peerId);
     }
 
@@ -470,7 +477,8 @@ function stopScreenShare() {
   for (const peerId in peers) {
     const pc = peers[peerId];
     pc.getSenders().forEach(s => {
-      if (s.track && s.track.kind === 'video') {
+      // Remove apenas os trilhos de vídeo e áudio da tela, mantendo o microfone intacto
+      if (s.track && s.track !== localAudioStream?.getAudioTracks()[0]) {
         pc.removeTrack(s);
       }
     });
