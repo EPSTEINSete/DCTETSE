@@ -345,7 +345,6 @@ function createPeerConnection(peerId, isInitiator) {
     }
   };
 
-  // Agrupador para combinar voz do microfone e áudio da transmissão do mesmo colega
   let remoteAudioStream = new MediaStream();
 
   pc.ontrack = (e) => {
@@ -449,7 +448,7 @@ screenBtn.onclick = async () => {
   try {
     localScreenStream = await navigator.mediaDevices.getDisplayMedia({ 
       video: true, 
-      audio: true // Ativado para transmitir o som da aba/sistema junto com a tela
+      audio: true 
     });
     sharingScreen = true;
     screenBtn.textContent = '🛑';
@@ -477,7 +476,6 @@ function stopScreenShare() {
   for (const peerId in peers) {
     const pc = peers[peerId];
     pc.getSenders().forEach(s => {
-      // Remove apenas os trilhos de vídeo e áudio da tela, mantendo o microfone intacto
       if (s.track && s.track !== localAudioStream?.getAudioTracks()[0]) {
         pc.removeTrack(s);
       }
@@ -498,6 +496,7 @@ function addScreenTile(id, stream, isLocal) {
     tile = document.createElement('div');
     tile.className = 'screen-tile';
     tile.id = 'screen-' + id;
+    tile.style.position = 'relative';
 
     const video = document.createElement('video');
     video.autoplay = true;
@@ -505,12 +504,55 @@ function addScreenTile(id, stream, isLocal) {
     video.muted = isLocal;
     tile.appendChild(video);
 
-    const label = document.createElement('div');
-    label.className = 'screen-label';
-    label.textContent = (isLocal ? 'Você' : (remoteUsers[id] || 'Alguém')) + ' (Clique para Tela Cheia)';
-    tile.appendChild(label);
+    const labelContainer = document.createElement('div');
+    labelContainer.className = 'screen-label';
+    labelContainer.style.display = 'flex';
+    labelContainer.style.justifyContent = 'space-between';
+    labelContainer.style.alignItems = 'center';
+    labelContainer.style.width = '100%';
 
-    tile.onclick = () => {
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = (isLocal ? 'Você' : (remoteUsers[id] || 'Alguém'));
+    labelContainer.appendChild(nameSpan);
+
+    if (!isLocal) {
+      const controlsDiv = document.createElement('div');
+      controlsDiv.style.display = 'flex';
+      controlsDiv.style.alignItems, 'center';
+      controlsDiv.style.gap = '6px';
+
+      const volIcon = document.createElement('span');
+      volIcon.textContent = '🔊';
+      volIcon.style.fontSize = '12px';
+
+      const volSlider = document.createElement('input');
+      volSlider.type = 'range';
+      volSlider.min = '0';
+      volSlider.max = '1';
+      volSlider.step = '0.05';
+      volSlider.value = '1';
+      volSlider.style.width = '70px';
+      volSlider.style.cursor = 'pointer';
+
+      volSlider.oninput = (e) => {
+        e.stopPropagation();
+        video.volume = volSlider.value;
+        volIcon.textContent = (volSlider.value == 0) ? '🔇' : '🔊';
+      };
+
+      volSlider.onclick = (e) => {
+        e.stopPropagation();
+      };
+
+      controlsDiv.appendChild(volIcon);
+      controlsDiv.appendChild(volSlider);
+      labelContainer.appendChild(controlsDiv);
+    }
+
+    tile.appendChild(labelContainer);
+
+    tile.onclick = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('input')) return;
       if (!document.fullscreenElement) {
         tile.requestFullscreen().catch(() => {});
       } else {
