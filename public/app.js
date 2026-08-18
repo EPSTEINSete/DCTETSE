@@ -17,7 +17,7 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos responsivos definitivos baseados em Flexbox para evitar qualquer quebra no celular ou PC
+// Estilos responsivos e suporte a Tela Cheia (Landscape & Mobile Fullscreen)
 if (!document.getElementById('discord-extra-styles')) {
   const style = document.createElement('style');
   style.id = 'discord-extra-styles';
@@ -43,7 +43,7 @@ if (!document.getElementById('discord-extra-styles')) {
       padding: 0 !important;
     }
 
-    /* Painel lateral de membros fixo no canto direito via Flexbox no desktop */
+    /* Painel lateral de membros no desktop */
     .members-sidebar, #users {
       width: 240px !important;
       min-width: 240px !important;
@@ -101,7 +101,49 @@ if (!document.getElementById('discord-extra-styles')) {
       accent-color: #5865f2;
     }
 
-    /* Responsivo para celular: oculta a barra lateral de membros para não estragar a visualização */
+    /* Estilo de tela cheia para a transmissão */
+    .screen-tile.is-fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 999999 !important;
+      background: #000 !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+    }
+
+    .screen-tile.is-fullscreen video {
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 100vh !important;
+      object-fit: contain !important;
+    }
+
+    .fullscreen-btn-toggle {
+      background: rgba(0, 0, 0, 0.6);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+    .fullscreen-btn-toggle:hover {
+      background: #5865f2;
+    }
+
+    /* Otimização para Celular em Pé */
     @media (max-width: 768px) {
       #app-screen {
         flex-direction: column !important;
@@ -110,9 +152,43 @@ if (!document.getElementById('discord-extra-styles')) {
         display: none !important;
       }
     }
+
+    /* Otimização para Celular Deitado (Landscape) */
+    @media (max-width: 920px) and (orientation: landscape) {
+      .sidebar, .channels-sidebar, .members-sidebar, #users, #chat-container, .chat-area {
+        display: none !important;
+      }
+      #app-screen {
+        flex-direction: row !important;
+        background: #000 !important;
+      }
+      #main-content, #screen-grid {
+        width: 100vw !important;
+        height: 100vh !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .screen-tile {
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+      }
+      .screen-tile video {
+        object-fit: contain !important;
+      }
+    }
   `;
   document.head.appendChild(style);
 }
+
+// Sincroniza estado da classe is-fullscreen ao sair pelo gesto do celular/teclado
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    document.querySelectorAll('.screen-tile.is-fullscreen').forEach(el => {
+      el.classList.remove('is-fullscreen');
+    });
+  }
+});
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -668,12 +744,12 @@ function addScreenTile(id, stream, isLocal) {
     nameSpan.textContent = (isLocal ? 'Você' : (remoteUsers[id] || 'Alguém'));
     labelContainer.appendChild(nameSpan);
 
-    if (!isLocal) {
-      const controlsDiv = document.createElement('div');
-      controlsDiv.style.display = 'flex';
-      controlsDiv.style.alignItems = 'center';
-      controlsDiv.style.gap = '6px';
+    const rightControls = document.createElement('div');
+    rightControls.style.display = 'flex';
+    rightControls.style.alignItems = 'center';
+    rightControls.style.gap = '8px';
 
+    if (!isLocal) {
       const volIcon = document.createElement('span');
       volIcon.textContent = '🔊';
       volIcon.style.fontSize = '12px';
@@ -684,7 +760,7 @@ function addScreenTile(id, stream, isLocal) {
       volSlider.max = '1';
       volSlider.step = '0.05';
       volSlider.value = '1';
-      volSlider.style.width = '70px';
+      volSlider.style.width = '60px';
       volSlider.style.cursor = 'pointer';
 
       volSlider.oninput = (e) => {
@@ -693,31 +769,53 @@ function addScreenTile(id, stream, isLocal) {
         volIcon.textContent = (volSlider.value == 0) ? '🔇' : '🔊';
       };
 
-      volSlider.onclick = (e) => {
-        e.stopPropagation();
-      };
+      volSlider.onclick = (e) => { e.stopPropagation(); };
 
-      controlsDiv.appendChild(volIcon);
-      controlsDiv.appendChild(volSlider);
-      labelContainer.appendChild(controlsDiv);
+      rightControls.appendChild(volIcon);
+      rightControls.appendChild(volSlider);
     }
 
+    // Botão dedicado de Tela Cheia para Celulares e Desktop
+    const fsToggleBtn = document.createElement('button');
+    fsToggleBtn.className = 'fullscreen-btn-toggle';
+    fsToggleBtn.innerHTML = '🗖 Tela Cheia';
+    fsToggleBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleFullscreenTile(tile, video);
+    };
+
+    rightControls.appendChild(fsToggleBtn);
+    labelContainer.appendChild(rightControls);
     tile.appendChild(labelContainer);
 
     tile.onclick = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.closest('input')) return;
-      if (!document.fullscreenElement) {
-        tile.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
+      if (e.target.tagName === 'INPUT' || e.target.closest('input') || e.target.closest('button')) return;
+      toggleFullscreenTile(tile, video);
     };
 
     screenGrid.appendChild(tile);
   }
+
   const videoEl = tile.querySelector('video');
   videoEl.srcObject = stream;
   videoEl.play().catch(() => {});
+}
+
+function toggleFullscreenTile(tile, video) {
+  const isFS = tile.classList.contains('is-fullscreen');
+  if (isFS) {
+    tile.classList.remove('is-fullscreen');
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  } else {
+    tile.classList.add('is-fullscreen');
+    if (tile.requestFullscreen) {
+      tile.requestFullscreen().catch(() => {});
+    } else if (video.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen(); // Suporte nativo Safari/iOS
+    }
+  }
 }
 
 function removeScreenTile(id) {
