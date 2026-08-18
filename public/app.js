@@ -17,184 +17,6 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos responsivos e suporte a Tela Cheia com rotação automática
-if (!document.getElementById('discord-extra-styles')) {
-  const style = document.createElement('style');
-  style.id = 'discord-extra-styles';
-  style.textContent = `
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #313338;
-      font-family: sans-serif;
-    }
-
-    #app-screen {
-      display: flex !important;
-      flex-direction: row !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      overflow: hidden !important;
-      position: relative !important;
-      box-sizing: border-box !important;
-      padding: 0 !important;
-    }
-
-    /* Painel lateral de membros no desktop */
-    .members-sidebar, #users {
-      width: 240px !important;
-      min-width: 240px !important;
-      max-width: 240px !important;
-      height: 100% !important;
-      background: #2b2d31 !important;
-      border-left: 1px solid #1f2023 !important;
-      padding: 16px 8px !important;
-      margin: 0 !important;
-      box-sizing: border-box !important;
-      overflow-y: auto !important;
-      flex-shrink: 0 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      z-index: 100 !important;
-    }
-
-    .user-discord-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 10px;
-      border-radius: 4px;
-      margin-bottom: 4px;
-      background: rgba(255,255,255,0.02);
-    }
-    .user-discord-item:hover {
-      background: rgba(255,255,255,0.05);
-    }
-    .user-info-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      overflow: hidden;
-    }
-    .user-controls-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .control-btn-mini {
-      background: none;
-      border: none;
-      color: #b5bac1;
-      cursor: pointer;
-      font-size: 14px;
-      padding: 2px;
-    }
-    .control-btn-mini:hover {
-      color: #fff;
-    }
-    .vol-slider-mini {
-      width: 55px;
-      cursor: pointer;
-      accent-color: #5865f2;
-    }
-
-    /* Estilo de tela cheia para a transmissão */
-    .screen-tile.is-fullscreen {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      z-index: 999999 !important;
-      background: #000 !important;
-      border-radius: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      justify-content: center !important;
-      align-items: center !important;
-    }
-
-    .screen-tile.is-fullscreen video {
-      width: 100% !important;
-      height: 100% !important;
-      max-height: 100vh !important;
-      object-fit: contain !important;
-    }
-
-    .fullscreen-btn-toggle {
-      background: rgba(0, 0, 0, 0.6);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: background 0.2s;
-    }
-    .fullscreen-btn-toggle:hover {
-      background: #5865f2;
-    }
-
-    /* Otimização para Celular em Pé */
-    @media (max-width: 768px) {
-      #app-screen {
-        flex-direction: column !important;
-      }
-      .members-sidebar, #users {
-        display: none !important;
-      }
-    }
-
-    /* Otimização para Celular Deitado (Landscape) */
-    @media (max-width: 920px) and (orientation: landscape) {
-      .sidebar, .channels-sidebar, .members-sidebar, #users, #chat-container, .chat-area {
-        display: none !important;
-      }
-      #app-screen {
-        flex-direction: row !important;
-        background: #000 !important;
-      }
-      #main-content, #screen-grid {
-        width: 100vw !important;
-        height: 100vh !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      .screen-tile {
-        width: 100vw !important;
-        height: 100vh !important;
-        border-radius: 0 !important;
-      }
-      .screen-tile video {
-        object-fit: contain !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-// Sincroniza estado ao sair da tela cheia ou rotacionar
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) {
-    document.querySelectorAll('.screen-tile.is-fullscreen').forEach(el => {
-      el.classList.remove('is-fullscreen');
-    });
-    try {
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-      }
-    } catch (e) {}
-  }
-});
-
 function getAudioCtx() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -730,7 +552,6 @@ function addScreenTile(id, stream, isLocal) {
     tile = document.createElement('div');
     tile.className = 'screen-tile';
     tile.id = 'screen-' + id;
-    tile.style.position = 'relative';
 
     const video = document.createElement('video');
     video.autoplay = true;
@@ -749,12 +570,12 @@ function addScreenTile(id, stream, isLocal) {
     nameSpan.textContent = (isLocal ? 'Você' : (remoteUsers[id] || 'Alguém'));
     labelContainer.appendChild(nameSpan);
 
-    const rightControls = document.createElement('div');
-    rightControls.style.display = 'flex';
-    rightControls.style.alignItems = 'center';
-    rightControls.style.gap = '8px';
-
     if (!isLocal) {
+      const rightControls = document.createElement('div');
+      rightControls.style.display = 'flex';
+      rightControls.style.alignItems = 'center';
+      rightControls.style.gap = '6px';
+
       const volIcon = document.createElement('span');
       volIcon.textContent = '🔊';
       volIcon.style.fontSize = '12px';
@@ -778,61 +599,16 @@ function addScreenTile(id, stream, isLocal) {
 
       rightControls.appendChild(volIcon);
       rightControls.appendChild(volSlider);
+      labelContainer.appendChild(rightControls);
     }
 
-    const fsToggleBtn = document.createElement('button');
-    fsToggleBtn.className = 'fullscreen-btn-toggle';
-    fsToggleBtn.innerHTML = '🗖 Tela Cheia';
-    fsToggleBtn.onclick = (e) => {
-      e.stopPropagation();
-      toggleFullscreenTile(tile, video);
-    };
-
-    rightControls.appendChild(fsToggleBtn);
-    labelContainer.appendChild(rightControls);
     tile.appendChild(labelContainer);
-
-    tile.onclick = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.closest('input') || e.target.closest('button')) return;
-      toggleFullscreenTile(tile, video);
-    };
-
     screenGrid.appendChild(tile);
   }
 
   const videoEl = tile.querySelector('video');
   videoEl.srcObject = stream;
   videoEl.play().catch(() => {});
-}
-
-function toggleFullscreenTile(tile, video) {
-  const isFS = tile.classList.contains('is-fullscreen');
-  if (isFS) {
-    tile.classList.remove('is-fullscreen');
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    }
-    try {
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
-      }
-    } catch (e) {}
-  } else {
-    tile.classList.add('is-fullscreen');
-    
-    // Força tela cheia padrão e em seguida trava a orientação em paisagem
-    if (tile.requestFullscreen) {
-      tile.requestFullscreen().then(() => {
-        try {
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(() => {});
-          }
-        } catch (e) {}
-      }).catch(() => {});
-    } else if (video.webkitEnterFullscreen) {
-      video.webkitEnterFullscreen();
-    }
-  }
 }
 
 function removeScreenTile(id) {
