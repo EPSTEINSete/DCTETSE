@@ -181,7 +181,7 @@ if (!document.getElementById('discord-extra-styles')) {
   document.head.appendChild(style);
 }
 
-// Sincroniza estado da classe ao sair pelo gesto/botão nativo
+// Sincroniza estado ao sair da tela cheia ou rotacionar
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement) {
     document.querySelectorAll('.screen-tile.is-fullscreen').forEach(el => {
@@ -819,16 +819,19 @@ function toggleFullscreenTile(tile, video) {
     } catch (e) {}
   } else {
     tile.classList.add('is-fullscreen');
+    
+    // Força tela cheia padrão e em seguida trava a orientação em paisagem
     if (tile.requestFullscreen) {
-      tile.requestFullscreen().catch(() => {});
+      tile.requestFullscreen().then(() => {
+        try {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+          }
+        } catch (e) {}
+      }).catch(() => {});
     } else if (video.webkitEnterFullscreen) {
       video.webkitEnterFullscreen();
     }
-    try {
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {});
-      }
-    } catch (e) {}
   }
 }
 
