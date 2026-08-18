@@ -17,34 +17,48 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos definitivos: barra lateral fixa de verdade no canto direito absoluto da tela
+// Estilos responsivos definitivos baseados em Flexbox para evitar qualquer quebra no celular ou PC
 if (!document.getElementById('discord-extra-styles')) {
   const style = document.createElement('style');
   style.id = 'discord-extra-styles';
   style.textContent = `
-    /* Painel lateral de membros fixado de forma absoluta na borda direita da tela */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #313338;
+      font-family: sans-serif;
+    }
+
+    #app-screen {
+      display: flex !important;
+      flex-direction: row !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      overflow: hidden !important;
+      position: relative !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
+    }
+
+    /* Painel lateral de membros fixo no canto direito via Flexbox no desktop */
     .members-sidebar, #users {
-      position: fixed !important;
-      right: 0 !important;
-      top: 0 !important;
-      bottom: 0 !important;
       width: 240px !important;
+      min-width: 240px !important;
+      max-width: 240px !important;
+      height: 100% !important;
       background: #2b2d31 !important;
       border-left: 1px solid #1f2023 !important;
       padding: 16px 8px !important;
       margin: 0 !important;
       box-sizing: border-box !important;
       overflow-y: auto !important;
-      z-index: 9999 !important;
-    }
-
-    /* Garante que a tela principal reserve espaço à direita para a barra lateral */
-    #app-screen {
-      padding-right: 240px !important;
-      box-sizing: border-box !important;
-      width: 100vw !important;
-      height: 100vh !important;
-      overflow: hidden !important;
+      flex-shrink: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      z-index: 100 !important;
     }
 
     .user-discord-item {
@@ -87,10 +101,10 @@ if (!document.getElementById('discord-extra-styles')) {
       accent-color: #5865f2;
     }
 
-    /* Responsivo para celular: remove o espaçamento e oculta a barra lateral no mobile */
+    /* Responsivo para celular: oculta a barra lateral de membros para não estragar a visualização */
     @media (max-width: 768px) {
       #app-screen {
-        padding-right: 0 !important;
+        flex-direction: column !important;
       }
       .members-sidebar, #users {
         display: none !important;
