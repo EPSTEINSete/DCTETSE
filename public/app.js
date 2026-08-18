@@ -12,12 +12,8 @@ let voiceMembershipMap = {};
 
 const peers = {};        
 const remoteUsers = {};  
-
-// Mapas de volume e mudo
-const voiceVolumes = {};     // peerId -> volume da voz (0 a 1)
-const voiceMutedState = {};  // peerId -> boolean
-const screenVolumes = {};    // peerId -> volume da transmissão (0 a 1)
-const screenMutedState = {}; // peerId -> boolean
+const voiceVolumes = {};    // peerId -> volume da voz (0 a 1)
+const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
@@ -604,7 +600,7 @@ function addScreenTile(id, stream, isLocal) {
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = isLocal;
+    video.muted = isLocal; // Se for remoto, toca o áudio nativo da transmissão perfeitamente!
     tile.appendChild(video);
 
     const labelContainer = document.createElement('div');
@@ -624,42 +620,23 @@ function addScreenTile(id, stream, isLocal) {
       controlsDiv.style.alignItems = 'center';
       controlsDiv.style.gap = '6px';
 
-      const currentScreenVol = screenVolumes[id] !== undefined ? screenVolumes[id] : 1;
-      const currentScreenMuted = screenMutedState[id] || false;
-
       const volIcon = document.createElement('span');
-      volIcon.textContent = (currentScreenMuted || currentScreenVol == 0) ? '🔇' : '🔊';
+      volIcon.textContent = '🔊';
       volIcon.style.fontSize = '12px';
-      volIcon.style.cursor = 'pointer';
 
       const volSlider = document.createElement('input');
       volSlider.type = 'range';
       volSlider.min = '0';
       volSlider.max = '1';
       volSlider.step = '0.05';
-      volSlider.value = currentScreenVol;
+      volSlider.value = '1';
       volSlider.style.width = '70px';
       volSlider.style.cursor = 'pointer';
 
-      video.volume = currentScreenVol;
-      video.muted = currentScreenMuted;
-
-      volIcon.onclick = (e) => {
-        e.stopPropagation();
-        screenMutedState[id] = !screenMutedState[id];
-        const muted = screenMutedState[id];
-        volIcon.textContent = muted ? '🔇' : '🔊';
-        video.muted = muted;
-      };
-
       volSlider.oninput = (e) => {
         e.stopPropagation();
-        const val = parseFloat(e.target.value);
-        screenVolumes[id] = val;
-        screenMutedState[id] = (val === 0);
-        volIcon.textContent = (val === 0) ? '🔇' : '🔊';
-        video.volume = val;
-        video.muted = (val === 0);
+        video.volume = volSlider.value;
+        volIcon.textContent = (volSlider.value == 0) ? '🔇' : '🔊';
       };
 
       volSlider.onclick = (e) => {
