@@ -17,7 +17,7 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos responsivos e suporte a Tela Cheia (Landscape & Mobile Fullscreen)
+// Estilos responsivos e suporte a Tela Cheia com rotação automática
 if (!document.getElementById('discord-extra-styles')) {
   const style = document.createElement('style');
   style.id = 'discord-extra-styles';
@@ -181,12 +181,17 @@ if (!document.getElementById('discord-extra-styles')) {
   document.head.appendChild(style);
 }
 
-// Sincroniza estado da classe is-fullscreen ao sair pelo gesto do celular/teclado
+// Sincroniza estado da classe ao sair pelo gesto/botão nativo
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement) {
     document.querySelectorAll('.screen-tile.is-fullscreen').forEach(el => {
       el.classList.remove('is-fullscreen');
     });
+    try {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    } catch (e) {}
   }
 });
 
@@ -775,7 +780,6 @@ function addScreenTile(id, stream, isLocal) {
       rightControls.appendChild(volSlider);
     }
 
-    // Botão dedicado de Tela Cheia para Celulares e Desktop
     const fsToggleBtn = document.createElement('button');
     fsToggleBtn.className = 'fullscreen-btn-toggle';
     fsToggleBtn.innerHTML = '🗖 Tela Cheia';
@@ -808,13 +812,23 @@ function toggleFullscreenTile(tile, video) {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
+    try {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    } catch (e) {}
   } else {
     tile.classList.add('is-fullscreen');
     if (tile.requestFullscreen) {
       tile.requestFullscreen().catch(() => {});
     } else if (video.webkitEnterFullscreen) {
-      video.webkitEnterFullscreen(); // Suporte nativo Safari/iOS
+      video.webkitEnterFullscreen();
     }
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    } catch (e) {}
   }
 }
 
