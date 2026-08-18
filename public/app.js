@@ -17,32 +17,34 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos idênticos ao Discord com painel lateral fixo no canto direito absoluto e responsivo para mobile
+// Estilos definitivos: barra lateral fixa de verdade no canto direito absoluto da tela
 if (!document.getElementById('discord-extra-styles')) {
   const style = document.createElement('style');
   style.id = 'discord-extra-styles';
   style.textContent = `
-    /* Garante que a tela principal deixe espaço para a barra lateral direita */
-    #app-screen {
-      position: relative !important;
-      padding-right: 240px;
-      box-sizing: border-box;
-    }
-
-    /* Painel lateral de membros fixado no canto direito absoluto igual ao Discord */
+    /* Painel lateral de membros fixado de forma absoluta na borda direita da tela */
     .members-sidebar, #users {
-      position: absolute !important;
+      position: fixed !important;
       right: 0 !important;
       top: 0 !important;
       bottom: 0 !important;
       width: 240px !important;
-      background: #2b2d31;
-      border-left: 1px solid #1f2023;
+      background: #2b2d31 !important;
+      border-left: 1px solid #1f2023 !important;
       padding: 16px 8px !important;
       margin: 0 !important;
-      box-sizing: border-box;
-      overflow-y: auto;
-      z-index: 100;
+      box-sizing: border-box !important;
+      overflow-y: auto !important;
+      z-index: 9999 !important;
+    }
+
+    /* Garante que a tela principal reserve espaço à direita para a barra lateral */
+    #app-screen {
+      padding-right: 240px !important;
+      box-sizing: border-box !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      overflow: hidden !important;
     }
 
     .user-discord-item {
@@ -85,7 +87,7 @@ if (!document.getElementById('discord-extra-styles')) {
       accent-color: #5865f2;
     }
 
-    /* Responsivo para celular: remove o espaçamento e oculta a barra lateral no mobile igual ao Discord */
+    /* Responsivo para celular: remove o espaçamento e oculta a barra lateral no mobile */
     @media (max-width: 768px) {
       #app-screen {
         padding-right: 0 !important;
