@@ -447,12 +447,12 @@ function createPeerConnection(peerId, isInitiator) {
   };
 
   pc.ontrack = (e) => {
-    const stream = e.streams[0];
-    const hasVideo = stream && stream.getVideoTracks().length > 0;
+    const stream = e.streams[0] || new MediaStream([e.track]);
+    const isVideoTrack = e.track.kind === 'video';
 
-    if (hasVideo) {
+    if (isVideoTrack) {
       addScreenTile(peerId, stream, false);
-      stream.getVideoTracks()[0].onended = () => removeScreenTile(peerId);
+      e.track.onended = () => removeScreenTile(peerId);
     } else {
       attachAudioTrack(peerId, stream);
     }
@@ -460,7 +460,9 @@ function createPeerConnection(peerId, isInitiator) {
 
   pc.onnegotiationneeded = async () => {
     try {
-      sendOffer(peerId);
+      if (pc.signalingState === 'stable') {
+        await sendOffer(peerId);
+      }
     } catch (err) {}
   };
 
@@ -557,7 +559,6 @@ screenBtn.onclick = async () => {
     for (const peerId in peers) {
       const pc = peers[peerId];
       localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
-      sendOffer(peerId);
     }
 
     addScreenTile('me', localScreenStream, true);
@@ -580,7 +581,6 @@ function stopScreenShare() {
       }
     });
     socket.emit('signal', { to: peerId, data: { type: 'screen-stopped' } });
-    sendOffer(peerId);
   }
 
   removeScreenTile('me');
@@ -600,7 +600,7 @@ function addScreenTile(id, stream, isLocal) {
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = isLocal; // Se for remoto, toca o áudio nativo da transmissão perfeitamente!
+    video.muted = isLocal;
     tile.appendChild(video);
 
     const labelContainer = document.createElement('div');
