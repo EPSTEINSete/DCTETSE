@@ -12,7 +12,57 @@ let voiceMembershipMap = {};
 
 const peers = {};        
 const remoteUsers = {};  
+const voiceVolumes = {};    // peerId -> volume da voz (0 a 1)
+const voiceMutedState = {}; // peerId -> boolean (se a voz do amigo está silenciada)
 let audioCtx = null;
+
+// Estilos adicionais injetados para o painel de usuários estilo Discord no canto direito
+if (!document.getElementById('discord-extra-styles')) {
+  const style = document.createElement('style');
+  style.id = 'discord-extra-styles';
+  style.textContent = `
+    .user-discord-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      background: rgba(255,255,255,0.02);
+    }
+    .user-discord-item:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    .user-info-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .user-controls-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .control-btn-mini {
+      background: none;
+      border: none;
+      color: #b5bac1;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px;
+    }
+    .control-btn-mini:hover {
+      color: #fff;
+    }
+    .vol-slider-mini {
+      width: 50px;
+      cursor: pointer;
+      accent-color: #5865f2;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -278,15 +328,53 @@ socket.on('voice-user-left', ({ id }) => {
 
 function renderUsers() {
   usersList.innerHTML = '';
-  const me = document.createElement('li');
-  me.className = 'channel-item';
-  me.textContent = myName + ' (você)';
-  usersList.appendChild(me);
+  
+  // Você
+  const meLi = document.createElement('li');
+  meLi.className = 'user-discord-item';
+  meLi.innerHTML = `
+    <div class="user-info-left">
+      <div style="width:24px;height:24px;border-radius:50%;background:#5865f2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">${myName.charAt(0).toUpperCase()}</div>
+      <span style="color:#f2f3f5;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${myName} (você)</span>
+    </div>
+  `;
+  usersList.appendChild(meLi);
 
+  // Demais usuários online com botões de volume de voz e silenciar
   Object.entries(remoteUsers).forEach(([id, name]) => {
     const li = document.createElement('li');
-    li.className = 'channel-item';
-    li.textContent = name;
+    li.className = 'user-discord-item';
+    
+    const currentVol = voiceVolumes[id] !== undefined ? voiceVolumes[id] : 1;
+    const isMutedVoice = voiceMutedState[id] || false;
+    
+    li.innerHTML = `
+      <div class="user-info-left">
+        <div style="width:24px;height:24px;border-radius:50%;background:#4e5058;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">${name.charAt(0).toUpperCase()}</div>
+        <span style="color:#949ba4;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${name}">${name}</span>
+      </div>
+      <div class="user-controls-right">
+        <button class="control-btn-mini mute-voice-btn" data-id="${id}" title="${isMutedVoice ? 'Ativar Voz' : 'Silenciar Amigo'}">${isMutedVoice ? '🔇' : '🎙️'}</button>
+        <input type="range" class="vol-slider-mini voice-vol-slider" data-id="${id}" min="0" max="1" step="0.05" value="${currentVol}" title="Volume da voz do amigo">
+      </div>
+    `;
+    
+    const muteBtnEl = li.querySelector('.mute-voice-btn');
+    const volSliderEl = li.querySelector('.voice-vol-slider');
+    
+    muteBtnEl.onclick = () => {
+      voiceMutedState[id] = !voiceMutedState[id];
+      const audioEl = document.getElementById('audio-' + id);
+      if (audioEl) audioEl.muted = voiceMutedState[id];
+      renderUsers();
+    };
+    
+    volSliderEl.oninput = (e) => {
+      voiceVolumes[id] = parseFloat(e.target.value);
+      const audioEl = document.getElementById('audio-' + id);
+      if (audioEl) audioEl.volume = voiceVolumes[id];
+    };
+
     usersList.appendChild(li);
   });
 }
@@ -345,19 +433,17 @@ function createPeerConnection(peerId, isInitiator) {
     }
   };
 
-  let remoteAudioStream = new MediaStream();
-
   pc.ontrack = (e) => {
-    if (e.track.kind === 'audio') {
-      remoteAudioStream.addTrack(e.track);
-      attachAudioTrack(peerId, remoteAudioStream);
-      e.track.onended = () => {
-        remoteAudioStream.removeTrack(e.track);
-      };
-    } else if (e.track.kind === 'video') {
-      const stream = e.streams[0] || new MediaStream([e.track]);
+    const stream = e.streams[0];
+    const hasVideo = stream && stream.getVideoTracks().length > 0;
+
+    if (hasVideo) {
+      // É a transmissão de tela (vídeo + áudio do sistema/aba)
       addScreenTile(peerId, stream, false);
-      e.track.onended = () => removeScreenTile(peerId);
+      stream.getVideoTracks()[0].onended = () => removeScreenTile(peerId);
+    } else {
+      // É a voz do microfone do amigo
+      attachAudioTrack(peerId, stream);
     }
   };
 
@@ -429,6 +515,8 @@ function attachAudioTrack(peerId, stream) {
     document.body.appendChild(audio);
   }
   audio.srcObject = stream;
+  audio.volume = voiceVolumes[peerId] !== undefined ? voiceVolumes[peerId] : 1;
+  audio.muted = voiceMutedState[peerId] || false;
   audio.play().catch(() => {});
 }
 
@@ -518,7 +606,7 @@ function addScreenTile(id, stream, isLocal) {
     if (!isLocal) {
       const controlsDiv = document.createElement('div');
       controlsDiv.style.display = 'flex';
-      controlsDiv.style.alignItems, 'center';
+      controlsDiv.style.alignItems = 'center';
       controlsDiv.style.gap = '6px';
 
       const volIcon = document.createElement('span');
@@ -534,6 +622,7 @@ function addScreenTile(id, stream, isLocal) {
       volSlider.style.width = '70px';
       volSlider.style.cursor = 'pointer';
 
+      // Controla exclusivamente o volume da transmissão (vídeo/áudio do YouTube/jogo)
       volSlider.oninput = (e) => {
         e.stopPropagation();
         video.volume = volSlider.value;
