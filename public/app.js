@@ -2,7 +2,6 @@ const socket = io();
 
 let myName = '';
 let localAudioStream = null;
-let processedAudioStream = null; // Áudio com supressão de ruído via Web Audio API
 let localScreenStream = null;
 let isMuted = false;
 let sharingScreen = false;
@@ -17,8 +16,6 @@ const voiceVolumes = {};    // peerId -> volume da voz (0 a 1)
 const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
-let micSourceNode = null;
-let destinationNode = null;
 
 // Estilos adicionais injetados para o painel de usuários estilo Discord no canto direito
 if (!document.getElementById('discord-extra-styles')) {
@@ -127,14 +124,11 @@ document.body.addEventListener('click', () => {
 }, { once: true });
 
 muteBtn.onclick = () => {
-  if (!localAudioStream && !processedAudioStream) return;
+  if (!localAudioStream) return;
   isMuted = !isMuted;
-  const targetStream = processedAudioStream || localAudioStream;
-  if (targetStream) {
-    targetStream.getAudioTracks().forEach(track => {
-      track.enabled = !isMuted;
-    });
-  }
+  localAudioStream.getAudioTracks().forEach(track => {
+    track.enabled = !isMuted;
+  });
   if (isMuted) {
     muteBtn.textContent = '🔇';
     muteBtn.classList.add('active-danger');
@@ -266,42 +260,21 @@ async function joinVoiceChannel(id) {
   }
 
   try {
+    // Supressão de ruído profissional ativada nativamente pelo navegador
     localAudioStream = await navigator.mediaDevices.getUserMedia({ 
       audio: { 
         echoCancellation: true, 
         noiseSuppression: true, 
-        autoGainControl: true,
-        channelCount: 1
+        autoGainControl: true 
       }, 
       video: false 
     });
-
-    // Configurando Supressão de Ruído Avançada via Web Audio API (High-Pass Filter + Noise Gate)
-    const ctx = getAudioCtx();
-    micSourceNode = ctx.createMediaStreamSource(localAudioStream);
-    
-    // Filtro Passa-Alta (High-Pass) corta ruídos graves de fundo/ventos abaixo de 120Hz
-    const highPassFilter = ctx.createBiquadFilter();
-    highPassFilter.type = 'highpass';
-    highPassFilter.frequency.setValueAtTime(120, ctx.currentTime);
-
-    // Nó de ganho para suavizar e cortar ruídos muito baixos (Noise Gate simples)
-    const noiseGateGain = ctx.createGain();
-    noiseGateGain.gain.setValueAtTime(1.0, ctx.currentTime);
-
-    destinationNode = ctx.createMediaStreamDestination();
-
-    micSourceNode.connect(highPassFilter);
-    highPassFilter.connect(noiseGateGain);
-    noiseGateGain.connect(destinationNode);
-
-    processedAudioStream = destinationNode.stream;
-
   } catch (err) {
     alert('Acesso ao microfone foi recusado ou dispositivo não encontrado.');
     return;
   }
 
+  getAudioCtx();
   currentVoiceChannel = id;
   socket.emit('join-voice-channel', { channelId: id, name: myName });
   
@@ -335,7 +308,6 @@ function leaveVoiceChannel(clearChannel) {
       localAudioStream.getTracks().forEach(t => t.stop());
       localAudioStream = null;
     }
-    processedAudioStream = null;
     screenBtn.disabled = true;
     voiceStatusPanel.style.display = 'none';
   }
@@ -482,11 +454,11 @@ function createPeerConnection(peerId, isInitiator) {
 
   pc.ontrack = (e) => {
     const stream = e.streams[0] || new MediaStream([e.track]);
-    const hasVideo = stream.getVideoTracks().length > 0;
+    const isVideo = e.track.kind === 'video';
 
-    if (hasVideo) {
+    if (isVideo) {
       addScreenTile(peerId, stream, false);
-      stream.getVideoTracks()[0].onended = () => removeScreenTile(peerId);
+      e.track.onended = () => removeScreenTile(peerId);
     } else {
       attachAudioTrack(peerId, stream);
     }
@@ -498,9 +470,8 @@ function createPeerConnection(peerId, isInitiator) {
     } catch (err) {}
   };
 
-  const audioStreamToSend = processedAudioStream || localAudioStream;
-  if (audioStreamToSend) {
-    audioStreamToSend.getTracks().forEach(t => pc.addTrack(t, audioStreamToSend));
+  if (localAudioStream) {
+    localAudioStream.getTracks().forEach(t => pc.addTrack(t, localAudioStream));
   }
   if (localScreenStream) {
     localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
@@ -524,11 +495,9 @@ async function sendOffer(peerId) {
 }
 
 socket.on('signal', async ({ from, data }) => {
+  if (!currentVoiceChannel) return;
   let pc = peers[from];
-  if (!pc && currentVoiceChannel) {
-    pc = createPeerConnection(from, false);
-  }
-  if (!pc) return;
+  if (!pc) pc = createPeerConnection(from, false);
 
   if (data.type === 'screen-stopped') {
     removeScreenTile(from);
@@ -574,11 +543,7 @@ function removeAudioElement(peerId) {
 }
 
 screenBtn.onclick = async () => {
-  // Se não estiver conectado em um canal de voz, conecta automaticamente ao canal Geral ('voz-1' ou primeiro canal de voz)
-  if (!currentVoiceChannel) {
-    const firstVoiceId = Object.keys(channels).find(id => channels[id].type === 'voice') || 'geral';
-    await joinVoiceChannel(firstVoiceId);
-  }
+  if (!currentVoiceChannel) return;
 
   if (sharingScreen) {
     stopScreenShare();
@@ -616,7 +581,7 @@ function stopScreenShare() {
   for (const peerId in peers) {
     const pc = peers[peerId];
     pc.getSenders().forEach(s => {
-      if (s.track && s.track !== (processedAudioStream || localAudioStream)?.getAudioTracks()[0]) {
+      if (s.track && s.track !== localAudioStream?.getAudioTracks()[0]) {
         pc.removeTrack(s);
       }
     });
