@@ -17,18 +17,25 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
-// Estilos adicionais injetados para o painel de usuários estilo Discord no canto direito
+// Estilos idênticos ao Discord com espaçamento e margens corretas para o painel lateral
 if (!document.getElementById('discord-extra-styles')) {
   const style = document.createElement('style');
   style.id = 'discord-extra-styles';
   style.textContent = `
+    /* Garante o espaçamento correto do painel de membros online estilo Discord */
+    .members-sidebar, #users {
+      margin-left: 16px;
+      padding: 12px 8px;
+      min-width: 240px;
+      box-sizing: border-box;
+    }
     .user-discord-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 8px;
+      padding: 8px 10px;
       border-radius: 4px;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
       background: rgba(255,255,255,0.02);
     }
     .user-discord-item:hover {
@@ -37,13 +44,13 @@ if (!document.getElementById('discord-extra-styles')) {
     .user-info-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       overflow: hidden;
     }
     .user-controls-right {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
     .control-btn-mini {
       background: none;
@@ -57,7 +64,7 @@ if (!document.getElementById('discord-extra-styles')) {
       color: #fff;
     }
     .vol-slider-mini {
-      width: 50px;
+      width: 55px;
       cursor: pointer;
       accent-color: #5865f2;
     }
@@ -260,7 +267,6 @@ async function joinVoiceChannel(id) {
   }
 
   try {
-    // Supressão de ruído profissional ativada nativamente pelo navegador
     localAudioStream = await navigator.mediaDevices.getUserMedia({ 
       audio: { 
         echoCancellation: true, 
@@ -342,7 +348,7 @@ function renderUsers() {
   meLi.className = 'user-discord-item';
   meLi.innerHTML = `
     <div class="user-info-left">
-      <div style="width:24px;height:24px;border-radius:50%;background:#5865f2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">${myName.charAt(0).toUpperCase()}</div>
+      <div style="width:24px;height:24px;border-radius:50%;background:#5865f2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;flex-shrink:0;">${myName.charAt(0).toUpperCase()}</div>
       <span style="color:#f2f3f5;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${myName} (você)</span>
     </div>
   `;
@@ -357,7 +363,7 @@ function renderUsers() {
     
     li.innerHTML = `
       <div class="user-info-left">
-        <div style="width:24px;height:24px;border-radius:50%;background:#4e5058;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">${name.charAt(0).toUpperCase()}</div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#4e5058;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;flex-shrink:0;">${name.charAt(0).toUpperCase()}</div>
         <span style="color:#949ba4;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${name}">${name}</span>
       </div>
       <div class="user-controls-right">
