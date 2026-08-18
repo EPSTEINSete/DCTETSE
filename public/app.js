@@ -260,7 +260,15 @@ async function joinVoiceChannel(id) {
   }
 
   try {
-    localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    // Adicionando supressão de ruído, cancelamento de eco e ganho automático nativos do browser
+    localAudioStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: { 
+        echoCancellation: true, 
+        noiseSuppression: true, 
+        autoGainControl: true 
+      }, 
+      video: false 
+    });
   } catch (err) {
     alert('Acesso ao microfone foi recusado ou dispositivo não encontrado.');
     return;
@@ -447,12 +455,12 @@ function createPeerConnection(peerId, isInitiator) {
   };
 
   pc.ontrack = (e) => {
-    const stream = e.streams[0] || new MediaStream([e.track]);
-    const isVideoTrack = e.track.kind === 'video';
+    const stream = e.streams[0];
+    const hasVideo = stream && stream.getVideoTracks().length > 0;
 
-    if (isVideoTrack) {
+    if (hasVideo) {
       addScreenTile(peerId, stream, false);
-      e.track.onended = () => removeScreenTile(peerId);
+      stream.getVideoTracks()[0].onended = () => removeScreenTile(peerId);
     } else {
       attachAudioTrack(peerId, stream);
     }
@@ -460,9 +468,7 @@ function createPeerConnection(peerId, isInitiator) {
 
   pc.onnegotiationneeded = async () => {
     try {
-      if (pc.signalingState === 'stable') {
-        await sendOffer(peerId);
-      }
+      sendOffer(peerId);
     } catch (err) {}
   };
 
@@ -559,6 +565,7 @@ screenBtn.onclick = async () => {
     for (const peerId in peers) {
       const pc = peers[peerId];
       localScreenStream.getTracks().forEach(t => pc.addTrack(t, localScreenStream));
+      sendOffer(peerId); // Enviando oferta explícita para o peer detectar o vídeo na hora
     }
 
     addScreenTile('me', localScreenStream, true);
@@ -581,6 +588,7 @@ function stopScreenShare() {
       }
     });
     socket.emit('signal', { to: peerId, data: { type: 'screen-stopped' } });
+    sendOffer(peerId);
   }
 
   removeScreenTile('me');
