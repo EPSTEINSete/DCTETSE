@@ -17,6 +17,62 @@ const voiceMutedState = {}; // peerId -> boolean
 
 let audioCtx = null;
 
+// Estilos isolados APENAS para a Tela Cheia da transmissão (sem mexer no layout do chat/canais)
+if (!document.getElementById('discord-fullscreen-styles')) {
+  const style = document.createElement('style');
+  style.id = 'discord-fullscreen-styles';
+  style.textContent = `
+    .screen-tile.is-fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 999999 !important;
+      background: #000 !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+    }
+    .screen-tile.is-fullscreen video {
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 100vh !important;
+      object-fit: contain !important;
+    }
+    .fullscreen-btn-toggle {
+      background: rgba(0, 0, 0, 0.6);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+    .fullscreen-btn-toggle:hover {
+      background: #5865f2;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// Sincroniza estado ao sair da tela cheia pelo navegador
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    document.querySelectorAll('.screen-tile.is-fullscreen').forEach(el => {
+      el.classList.remove('is-fullscreen');
+    });
+  }
+});
+
 function getAudioCtx() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -570,12 +626,12 @@ function addScreenTile(id, stream, isLocal) {
     nameSpan.textContent = (isLocal ? 'Você' : (remoteUsers[id] || 'Alguém'));
     labelContainer.appendChild(nameSpan);
 
-    if (!isLocal) {
-      const rightControls = document.createElement('div');
-      rightControls.style.display = 'flex';
-      rightControls.style.alignItems = 'center';
-      rightControls.style.gap = '6px';
+    const rightControls = document.createElement('div');
+    rightControls.style.display = 'flex';
+    rightControls.style.alignItems = 'center';
+    rightControls.style.gap = '6px';
 
+    if (!isLocal) {
       const volIcon = document.createElement('span');
       volIcon.textContent = '🔊';
       volIcon.style.fontSize = '12px';
@@ -599,16 +655,50 @@ function addScreenTile(id, stream, isLocal) {
 
       rightControls.appendChild(volIcon);
       rightControls.appendChild(volSlider);
-      labelContainer.appendChild(rightControls);
     }
 
+    // Botão de Tela Cheia integrado para celular e desktop
+    const fsToggleBtn = document.createElement('button');
+    fsToggleBtn.className = 'fullscreen-btn-toggle';
+    fsToggleBtn.innerHTML = '🗖 Tela Cheia';
+    fsToggleBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleFullscreenTile(tile, video);
+    };
+
+    rightControls.appendChild(fsToggleBtn);
+    labelContainer.appendChild(rightControls);
     tile.appendChild(labelContainer);
+
+    // Clicar no bloco também ativa/desativa a tela cheia
+    tile.onclick = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('input') || e.target.closest('button')) return;
+      toggleFullscreenTile(tile, video);
+    };
+
     screenGrid.appendChild(tile);
   }
 
   const videoEl = tile.querySelector('video');
   videoEl.srcObject = stream;
   videoEl.play().catch(() => {});
+}
+
+function toggleFullscreenTile(tile, video) {
+  const isFS = tile.classList.contains('is-fullscreen');
+  if (isFS) {
+    tile.classList.remove('is-fullscreen');
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  } else {
+    tile.classList.add('is-fullscreen');
+    if (tile.requestFullscreen) {
+      tile.requestFullscreen().catch(() => {});
+    } else if (video.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen();
+    }
+  }
 }
 
 function removeScreenTile(id) {
