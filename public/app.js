@@ -12,8 +12,14 @@ let voiceMembershipMap = {};
 
 const peers = {};        
 const remoteUsers = {};  
-const voiceVolumes = {};    // peerId -> volume da voz (0 a 1)
-const voiceMutedState = {}; // peerId -> boolean (se a voz do amigo está silenciada)
+
+// Mapas de volume e mudo robustos via Web Audio API
+const voiceVolumes = {};     // peerId -> volume da voz (0 a 1)
+const voiceMutedState = {};  // peerId -> boolean
+const screenVolumes = {};    // peerId -> volume da transmissão (0 a 1)
+const screenMutedState = {}; // peerId -> boolean
+const activeGainNodes = {};  // key: 'peerId-voice' ou 'peerId-screen' -> GainNode
+
 let audioCtx = null;
 
 // Estilos adicionais injetados para o painel de usuários estilo Discord no canto direito
@@ -72,6 +78,50 @@ function getAudioCtx() {
     audioCtx.resume();
   }
   return audioCtx;
+}
+
+// Conecta o MediaStream ao GainNode para controle de volume perfeito
+function attachAudioWithGain(stream, id, type, initialVolume, initialMuted) {
+  const ctx = getAudioCtx();
+  const key = `${id}-${type}`;
+  
+  // Remove anterior se existir
+  if (activeGainNodes[key]) {
+    try { activeGainNodes[key].source.disconnect(); } catch(e){}
+    delete activeGainNodes[key];
+  }
+
+  try {
+    const source = ctx.createMediaStreamSource(stream);
+    const gainNode = ctx.createGain();
+    
+    gainNode.gain.value = initialMuted ? 0 : initialVolume;
+    
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    activeGainNodes[key] = { source, gainNode };
+  } catch (err) {
+    // Fallback caso ocorra algum erro no AudioContext
+    let audio = document.getElementById('audio-' + id + '-' + type);
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = 'audio-' + id + '-' + type;
+      audio.autoplay = true;
+      document.body.appendChild(audio);
+    }
+    audio.srcObject = stream;
+    audio.volume = initialVolume;
+    audio.muted = initialMuted;
+    audio.play().catch(() => {});
+  }
+}
+
+function setVolumeAndMute(id, type, volume, muted) {
+  const key = `${id}-${type}`;
+  if (activeGainNodes[key]) {
+    activeGainNodes[key].gainNode.gain.value = muted ? 0 : volume;
+  }
 }
 
 const loginScreen = document.getElementById('login-screen');
@@ -364,15 +414,16 @@ function renderUsers() {
     
     muteBtnEl.onclick = () => {
       voiceMutedState[id] = !voiceMutedState[id];
-      const audioEl = document.getElementById('audio-' + id);
-      if (audioEl) audioEl.muted = voiceMutedState[id];
-      renderUsers();
+      const muted = voiceMutedState[id];
+      muteBtnEl.textContent = muted ? '🔇' : '🎙️';
+      muteBtnEl.title = muted ? 'Ativar Voz' : 'Silenciar Amigo';
+      setVolumeAndMute(id, 'voice', voiceVolumes[id] !== undefined ? voiceVolumes[id] : 1, muted);
     };
     
     volSliderEl.oninput = (e) => {
-      voiceVolumes[id] = parseFloat(e.target.value);
-      const audioEl = document.getElementById('audio-' + id);
-      if (audioEl) audioEl.volume = voiceVolumes[id];
+      const val = parseFloat(e.target.value);
+      voiceVolumes[id] = val;
+      setVolumeAndMute(id, 'voice', val, voiceMutedState[id] || false);
     };
 
     usersList.appendChild(li);
@@ -438,12 +489,23 @@ function createPeerConnection(peerId, isInitiator) {
     const hasVideo = stream && stream.getVideoTracks().length > 0;
 
     if (hasVideo) {
-      // É a transmissão de tela (vídeo + áudio do sistema/aba)
+      // É a transmissão de tela
       addScreenTile(peerId, stream, false);
+      
+      // Se a transmissão contiver áudio, roteia pelo GainNode de tela
+      if (stream.getAudioTracks().length > 0) {
+        const screenAudioStream = new MediaStream(stream.getAudioTracks());
+        const initVol = screenVolumes[peerId] !== undefined ? screenVolumes[peerId] : 1;
+        const initMuted = screenMutedState[peerId] || false;
+        attachAudioWithGain(screenAudioStream, peerId, 'screen', initVol, initMuted);
+      }
+
       stream.getVideoTracks()[0].onended = () => removeScreenTile(peerId);
     } else {
       // É a voz do microfone do amigo
-      attachAudioTrack(peerId, stream);
+      const initVol = voiceVolumes[peerId] !== undefined ? voiceVolumes[peerId] : 1;
+      const initMuted = voiceMutedState[peerId] || false;
+      attachAudioWithGain(stream, peerId, 'voice', initVol, initMuted);
     }
   };
 
@@ -506,23 +568,18 @@ socket.on('signal', async ({ from, data }) => {
   }
 });
 
-function attachAudioTrack(peerId, stream) {
-  let audio = document.getElementById('audio-' + peerId);
-  if (!audio) {
-    audio = document.createElement('audio');
-    audio.id = 'audio-' + peerId;
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-  }
-  audio.srcObject = stream;
-  audio.volume = voiceVolumes[peerId] !== undefined ? voiceVolumes[peerId] : 1;
-  audio.muted = voiceMutedState[peerId] || false;
-  audio.play().catch(() => {});
-}
-
 function removeAudioElement(peerId) {
-  const audio = document.getElementById('audio-' + peerId);
-  if (audio) audio.remove();
+  ['voice', 'screen'].forEach(type => {
+    const key = `${peerId}-${type}`;
+    if (activeGainNodes[key]) {
+      try { activeGainNodes[key].source.disconnect(); } catch(e){}
+      delete activeGainNodes[key];
+    }
+    const audio = document.getElementById('audio-' + peerId + '-' + type);
+    if (audio) audio.remove();
+  });
+  const oldAudio = document.getElementById('audio-' + peerId);
+  if (oldAudio) oldAudio.remove();
 }
 
 screenBtn.onclick = async () => {
@@ -589,7 +646,7 @@ function addScreenTile(id, stream, isLocal) {
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = isLocal;
+    video.muted = true; // Mudo no video element pois o som passa pelo GainNode do Web Audio API
     tile.appendChild(video);
 
     const labelContainer = document.createElement('div');
@@ -609,24 +666,38 @@ function addScreenTile(id, stream, isLocal) {
       controlsDiv.style.alignItems = 'center';
       controlsDiv.style.gap = '6px';
 
+      const currentScreenVol = screenVolumes[id] !== undefined ? screenVolumes[id] : 1;
+      const currentScreenMuted = screenMutedState[id] || false;
+
       const volIcon = document.createElement('span');
-      volIcon.textContent = '🔊';
+      volIcon.textContent = (currentScreenMuted || currentScreenVol == 0) ? '🔇' : '🔊';
       volIcon.style.fontSize = '12px';
+      volIcon.style.cursor = 'pointer';
 
       const volSlider = document.createElement('input');
       volSlider.type = 'range';
       volSlider.min = '0';
       volSlider.max = '1';
       volSlider.step = '0.05';
-      volSlider.value = '1';
+      volSlider.value = currentScreenVol;
       volSlider.style.width = '70px';
       volSlider.style.cursor = 'pointer';
 
-      // Controla exclusivamente o volume da transmissão (vídeo/áudio do YouTube/jogo)
+      volIcon.onclick = (e) => {
+        e.stopPropagation();
+        screenMutedState[id] = !screenMutedState[id];
+        const muted = screenMutedState[id];
+        volIcon.textContent = muted ? '🔇' : '🔊';
+        setVolumeAndMute(id, 'screen', screenVolumes[id] !== undefined ? screenVolumes[id] : 1, muted);
+      };
+
       volSlider.oninput = (e) => {
         e.stopPropagation();
-        video.volume = volSlider.value;
-        volIcon.textContent = (volSlider.value == 0) ? '🔇' : '🔊';
+        const val = parseFloat(e.target.value);
+        screenVolumes[id] = val;
+        screenMutedState[id] = (val === 0);
+        volIcon.textContent = (val === 0) ? '🔇' : '🔊';
+        setVolumeAndMute(id, 'screen', val, screenMutedState[id]);
       };
 
       volSlider.onclick = (e) => {
